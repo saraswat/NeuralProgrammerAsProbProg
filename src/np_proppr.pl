@@ -1,14 +1,119 @@
-% Sum all elements in this 1-d array.
-sum(Array, Ans):- make_array(IMax, Array), sum(1, IMax, Array, Ans).
+% TODO: Figure out how the Input utterance is to be represented.
+% cf [Neelakantan 2017]'s Question RNN.
+program(_Input, Table, Ans) :-
+	compute_state(Table, InitState), 
+	make_array(M, C, Table),
+	make_array(M, RS0),
+	assign(RS0, 1, 1, M),  
 
-% Ans = sum of elements in 1-d array from I to J (inclusive).
-sum(I, J, Array, Ans):- sum(I, J, Array, 0.0, Ans).
-sum(I, J, Array, X, Ans):-
-	array(Array, I, V),
-	X1 is X+V,
-	(I==J -> Ans=X1 ; (I1 is I+1, sum(I1, J, Array, X1, Ans))).
+	op(Op1),
+	col(Col1, C),
+	step(RS0, 1, M, C, Table, Op1, Col1, InitState, RS1, _Ans1),
+
+	op(Op2),
+	col(Col2, C),
+	step(RS1, 1, M, C, Table, Op2, Col2, InitState, RS2, _Ans2),
+
+	op(Op3),
+	col(Col3, C),
+	step(RS2, 1, M, C, Table, Op3, Col3, InitState, RS3, _Ans3),
+
+	op(Op4),
+	col(Col4, C),
+	step(RS3, 1, M, C, Table, Op4, Col4, InitState, _RS4, Ans).
+	
+% A probabilistic predicate -- op selector.
+% We have to learn the probabilities associated with each clause.
+% TODO: Figure out what syntax ProPPR is using, a bit worried their use of
+% braces is not Prolog syntax.
+% TODO: Figure out whether PRoPPR supports non-probabilistic predicates.
+
+op(gt)      . %:- {op(gt)}.
+op(lt)      . %:- {op(lt)}.
+op(geq)     . %:- {op(geq)}.
+op(leq)     . %:- {op(leq)}.
+op(argmax)  . %:- {op(argmax)}.
+op(argmin)  . %:- {op(argmin)}.
+op(select)  . %:- {op(select)}.
+op(mfe)     . %:- {op(mfe)}.
+op(previous). %:- {op(previous)}.
+op(next)    . %:- {op(next)}.
+op(first)   . %:- {op(first)}.
+op(last)    . %:- {op(last)}.
+op(reset)   . %:- {op(reset)}.
+op(print)   . %:- {op(print)}.
+op(count)   . %:- {op(count)}.
+
+% A probabilistic predicate -- column selector.
+col(C, Bound):- C < Bound. %, {col(C)}.
+
+% The paper also deals with "pivots" (numbers that occur in the question and
+% that can be/should be used in the synthesized program) using soft selection.
+% We will deal with these numbers as well through a learnable probability
+% distribution.
+
+% TODO: figure out what features should pivot depend on.
+% pivot/2 chooses the first element from the list that is the second.
+
+pivot(M, [M | _]).
+pivot(M, [_ | R]):- pivot(M, R).
+
+% One step of the computation  -- figure out the Ans and the output
+% row selector, based on the input row selector, information about the
+% Table, and the selected operation and column.
+% Note: We are using hard select here.
+% TODO: Figure out what a soft-select version of ProPPR might mean.
+
+step(RS, M, C, Table, Op, Col, S, RSOut, Ans):-
+	make_array(M, RSOut),
+	jump(RS, M, C, Table, Op, Col, S, RSOut, Ans).
+
+jump(RS, M, _C, Table, gt, Col,  s(_, _, Pivot, _, _, _), RSOut, _):- 
+	gt(Col, Pivot, Table, M, RS, 1, RSOut).
+jump(RS, M, _C, Table, lt, Col,  s(_, _, _, Pivot, _, _), RSOut, _):- 
+	lt(Col, Pivot, Table, M, RS, 1, RSOut).
+jump(RS, M, _C, Table, geq, Col,  s(_, _, _, _, Pivot, _), RSOut, _):- 
+	geq(Col, Pivot, Table, M, RS, 1, RSOut).
+jump(RS, M, _C, Table, leq, Col,  s(_, _, _, _, _,Pivot), RSOut, _):- 
+	leq(Col, Pivot, Table, M, RS, 1, RSOut).
+
+jump(RS, M, C, Table, argmax, Col,  _, RSOut, _):- 
+	argmax(Col, Table, M, C, RS, RSOut).
+jump(RS, M, C, Table, argmin, Col,  _, RSOut, _):- 
+	argmin(Col, Table, M, C, RS, RSOut).
+jump(RS, M, _C, _Table, first, _Col,  _, RSOut, _):-
+	array(RS, 1, RS1), first(RS, M, 1, RS1, RSOut).
+jump(RS, M, _C, _Table, last, _Col,  _, RSOut, _):-
+	array(RS, M, RSM), last(RS, M, M, RSM, RSOut).
+jump(RS, M, _C, _Table, previous, _Col,  _, RSOut, _):-
+	array(RS, 2, RSM), previous(RS, M, 1, RSM, RSOut).
+jump(RS, M, _C, _Table, next, _Col,  _, RSOut, _):-
+	next(RS, M, 1, 0, RSOut).
+
+jump(_RS, M, _C, _Table, select, Col, s(Select,_,_,_,_,_), RSOut, _):-
+	select(Select, Col, M, 1, RSOut).
+
+jump(_RS, M, _C, _Table, select, Col, s(_,MFE,_,_,_,_), RSOut, _):-
+	select(MFE, Col, M, 1, RSOut).
+
+jump(RS, _M, _C, _Table, count, _Col, _, _, ans(ScalarA, _)):- sum(RS, ScalarA).
+jump(RS, _M, _C, _Table, count, Col, _, _, ans(_,LookupA)):- print(RS, Col, LookupA).
+jump(_RS, M, _C, _Table, reset, _Col, _, RSOut, _):- assign(RSOut, 1, 1, M).
+     
+
+compute_state(_Table, s(_Select, _MFE)):-
+	true. % TODO
+
+
+% ------------------------ Support code ---------------------------
+
 
 make_array(I, A):- functor(A, row, I).
+
+% An M x N array is represented as an instance of rows/M, with each entry an
+% instance of row/N.
+% TODO: consider col-major representation. cols(...) with col entries, at least
+% for the main Table.
 make_array(I, J, A):- functor(A, rows, I), cols(A, 1, I, J).
 cols(A, K, I, J):- 
 	arg(K, A, AK),
@@ -16,8 +121,8 @@ cols(A, K, I, J):-
 	(K==I ; (K < I, K1 is K+1, cols(A, K1, I, J))).
 
 % Accessor -- X = A(I,J), X=A(I)
-array(A, I, J, X) :- arg(I, A, Row), arg(J, Row, X).
 array(A, I, X) :- arg(I, A, X).
+array(A, I, J, X) :- arg(I, A, Row), arg(J, Row, X).
 
 assign(RS, IndexI, IndexJ, Val, Def, M, C, I, J):-
        ((I==IndexI, J==IndexJ) -> Value = Val; Value = Def),
@@ -36,6 +141,18 @@ assign(RS, Index, Val, Def, I, M):-
 assign(RS, Def, I, M) :-
 	array(RS, I, Def),
 	(I==M; (I < M, I1 is I+1, assign(RS, Def, I1, M))).
+
+% Sum all elements in this 1-d array.
+sum(Array, Ans):- make_array(IMax, Array), sum(1, IMax, Array, Ans).
+
+% Ans = sum of elements in 1-d array from I to J (inclusive).
+sum(I, J, Array, Ans):- sum(I, J, Array, 0.0, Ans).
+sum(I, J, Array, X, Ans):-
+	array(Array, I, V),
+	X1 is X+V,
+	(I==J -> Ans=X1 ; (I1 is I+1, sum(I1, J, Array, X1, Ans))).
+
+% ------------------------- Implementation of operations --------------
 
 gt(Col, Pivot, Table, IMax, RS, I, RSOut) :-
 	array(Table, I, Col, AIJ),
@@ -60,7 +177,6 @@ leq(Col, Pivot, Table, IMax, RS, I, RSOut) :-
 	(AIJ =< Pivot -> Val=1; Val=0),
 	array(RSOut, I, Val),
 	(I==IMax; (I < IMax, I1 is I+1, leq(Col, Pivot, IMax, RS, I1, RSOut))).
-
 
 argmax(Col, Table, M, RS, RSOut) :-
 	array(Table, 1, Col, Val), 
@@ -127,90 +243,3 @@ select(Select, Col, M, I, RSOut) :-
 	array(RSOut, I, V),
 	(I==M; (I < M, I1 is I+1, select(Select, Col, M, I1, RSOut))).
 
-step(RS, M, C, Table, Op, Col, S, RSOut, Ans):-
-	make_array(M, RSOut),
-	jump(RS, M, C, Table, Op, Col, S, RSOut, Ans).
-
-jump(RS, M, _C, Table, gt, Col,  s(_, _, Pivot, _, _, _), RSOut, _):- 
-	gt(Col, Pivot, Table, M, RS, 1, RSOut).
-jump(RS, M, _C, Table, lt, Col,  s(_, _, _, Pivot, _, _), RSOut, _):- 
-	lt(Col, Pivot, Table, M, RS, 1, RSOut).
-jump(RS, M, _C, Table, geq, Col,  s(_, _, _, _, Pivot, _), RSOut, _):- 
-	geq(Col, Pivot, Table, M, RS, 1, RSOut).
-jump(RS, M, _C, Table, leq, Col,  s(_, _, _, _, _,Pivot), RSOut, _):- 
-	leq(Col, Pivot, Table, M, RS, 1, RSOut).
-
-jump(RS, M, C, Table, argmax, Col,  _, RSOut, _):- 
-	argmax(Col, Table, M, C, RS, RSOut).
-jump(RS, M, C, Table, argmin, Col,  _, RSOut, _):- 
-	argmin(Col, Table, M, C, RS, RSOut).
-jump(RS, M, _C, _Table, first, _Col,  _, RSOut, _):-
-	array(RS, 1, RS1), first(RS, M, 1, RS1, RSOut).
-jump(RS, M, _C, _Table, last, _Col,  _, RSOut, _):-
-	array(RS, M, RSM), last(RS, M, M, RSM, RSOut).
-jump(RS, M, _C, _Table, previous, _Col,  _, RSOut, _):-
-	array(RS, 2, RSM), previous(RS, M, 1, RSM, RSOut).
-jump(RS, M, _C, _Table, next, _Col,  _, RSOut, _):-
-	next(RS, M, 1, 0, RSOut).
-
-jump(_RS, M, _C, _Table, select, Col, s(Select,_,_,_,_,_), RSOut, _):-
-	select(Select, Col, M, 1, RSOut).
-
-jump(_RS, M, _C, _Table, select, Col, s(_,MFE,_,_,_,_), RSOut, _):-
-	select(MFE, Col, M, 1, RSOut).
-
-jump(RS, _M, _C, _Table, count, _Col, _, _, ans(ScalarA, _)):- sum(RS, ScalarA).
-jump(RS, _M, _C, _Table, count, Col, _, _, ans(_,LookupA)):- print(RS, Col, LookupA).
-jump(_RS, M, _C, _Table, reset, _Col, _, RSOut, _):- assign(RSOut, 1, 1, M).
-     
-
-compute_state(_Table, s(_Select, _MFE)):-
-	true. % TODO
-
-% TODO: Figure out how the Input utterance is to be represented.
-% cf [Neelakantan 2017]'s Question RNN.
-program(_Input, Table, Ans) :-
-	compute_state(Table, InitState), 
-	make_array(M, C, Table),
-	make_array(M, RS0),
-	assign(RS0, 1, 1, M),  
-
-	op(Op1),
-	col(Col1, C),
-	step(RS0, 1, M, C, Table, Op1, Col1, InitState, RS1, _Ans1),
-
-	op(Op2),
-	col(Col2, C),
-	step(RS1, 1, M, C, Table, Op2, Col2, InitState, RS2, _Ans2),
-
-	op(Op3),
-	col(Col3, C),
-	step(RS2, 1, M, C, Table, Op3, Col3, InitState, RS3, _Ans3),
-
-	op(Op4),
-	col(Col4, C),
-	step(RS3, 1, M, C, Table, Op4, Col4, InitState, _RS4, Ans).
-	
-% A probabilistic predicate -- op selector.
-% We have to learn the probabilities associated with each clause.
-
-op(gt)      . %:- {op(gt)}.
-op(lt)      . %:- {op(lt)}.
-op(geq)     . %:- {op(geq)}.
-op(leq)     . %:- {op(leq)}.
-op(argmax)  . %:- {op(argmax)}.
-op(argmin)  . %:- {op(argmin)}.
-op(select)  . %:- {op(select)}.
-op(mfe)     . %:- {op(mfe)}.
-op(previous). %:- {op(previous)}.
-op(next)    . %:- {op(next)}.
-op(first)   . %:- {op(first)}.
-op(last)    . %:- {op(last)}.
-op(reset)   . %:- {op(reset)}.
-op(print)   . %:- {op(print)}.
-op(count)   . %:- {op(count)}.
-
-% A probabilistic predicate -- column selector.
-col(C, Bound):- C < Bound. %, {col(C)}.
-
-% The paper also deals with 
