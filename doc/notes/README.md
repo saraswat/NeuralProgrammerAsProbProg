@@ -29,7 +29,9 @@ Can they be used for multi-step entailments, i.e. to implement reasoning, in a f
 Can we build theories into NN learners?
 
 ## References
-1. [Bishan Yang's papers:](http://arxiv.org/abs/1412.6575), [more](http://arxiv.org/abs/1412.6575)
-2. [Tim's injecting paper:](http://rockt.github.io/pdf/rocktaschel2015injecting.pdf)
+1. [Bishan Yang's papers](http://arxiv.org/abs/1412.6575), [more](http://arxiv.org/abs/1412.6575)
+2. [Tim's injecting paper](http://rockt.github.io/pdf/rocktaschel2015injecting.pdf)
+3. [Tim's Neural Theorem Prover paper](http://www.akbc.ws/2016/papers/14_Paper.pdf)
+4. [William's Tensorlog paper](https://arxiv.org/abs/1605.06523)
 
 (See reference lists of these papers for other papers.)
