@@ -1,5 +1,0 @@
-\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
-\BOOKMARK [1][-]{section.2}{PageRank}{}% 2
-\BOOKMARK [1][-]{section.3}{Constraint-SLD resolution}{}% 3
-\BOOKMARK [2][-]{subsection.3.1}{Learning weights via training, using probabiistic constraint-SLD resolution}{section.3}% 4
-\BOOKMARK [1][-]{section.4}{Applying PageRank to constraint-SLD graphs}{}% 5
