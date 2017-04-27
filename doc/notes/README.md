@@ -1,5 +1,5 @@
 # logic-nn
-##Doing logic with neural nets.
+## Doing logic with neural nets.
 
 We want to rebuild logic on a machine learning foundation.
 
