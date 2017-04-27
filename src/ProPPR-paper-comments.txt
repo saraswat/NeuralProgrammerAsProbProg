@@ -1,0 +1,28 @@
+Sun Feb 26 15:20:11 EST 2017
+
+Overall, the writing could be significantly improved. Algorithmic and logical consquences are not made clear. 
+
+(a) What is alpha' for reasonable programs? Looks like it should be 0! alpha' (for Page-Rank-Nibble) is suppo
+
+P3: provably-correct and proveably-correct in the same line!
+
+P3: Do not say what "linearized version of the proof space" means.
+P3: epsilon is "the worst case approximation error" -- not defined.
+
+P3: "inference .. in size independent of the size of the underlying database". What does this mean, i.e. how could it be so? 
+
+P5 Table 2: 
+     |N(u)| used but not defined. Is this just the outdegree of u?
+     phi(u -> v) used but not defined.
+
+P6 ppr(v0) not defined.
+
+Table 2: What does "p=r=0" mean? is (bold) 0 a vector? Note earlier message about definining a vector properly. 
+
+r is clearly not "0", it is defined for v0, and maps it to 1.
+p is emptyset, not "0".
+
+In the definition of push(u, alpha'), r[v] on the RHS in r[v] = r[v] + ... doesn't make sense because it may be undefined. 
+
+Presumably it should "default" to 0.
+

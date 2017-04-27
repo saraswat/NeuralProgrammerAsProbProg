@@ -1,0 +1,164 @@
+% This is LLNCS.DOC the documentation file of
+% the LaTeX2e class from Springer-Verlag
+% for Lbecture Notes in Computer Science, version 2.4
+\documentclass{llncs}
+\usepackage{llncsdoc}
+%
+%\usepackage{aopmath}
+\usepackage{graphicx}
+
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{colortbl}
+\usepackage{multirow}
+
+
+\usepackage{amssymb}
+%\newtheorem{definition}{Definition} % [section]
+%\newtheorem{example}{Example} % [section]
+\newcommand{\pivot}[1]{\mathbin{\, {#1} \,}}
+\newcommand{\Pivot}[1]{\mathbin{\; {#1} \;}}
+\newcommand{\Var}[0]{\mbox{\texttt{Var}}}
+\let\from=\leftarrow
+
+\newcommand{\keywords}[1]{\par\addvspace\baselineskip
+\noindent\keywordname\enspace\ignorespaces#1}
+\def\code#1{\texttt{#1}}
+
+\begin{document}
+%\bibliographystyle{acmtrans}
+
+\long\def\comment#1{}
+
+\title{Differentiable Concurrent Constraint Programs}
+
+\author{{\sc Incomplete Draft}}
+\institute{}
+\maketitle
+
+\begin{abstract}
+
+\keywords{machine learning, concurrent constraint programming}
+\end{abstract}
+\section{Basic idea}
+
+The {\em supervised machine learning} approach is applicable in
+settings where the programmer is concerned with specifying a function
+that must work accurately even in the presence of significant amounts
+of noise in the input. For instance, suppose the programmer must write
+code that labels an arbitrary input image with a tag (``dog with
+hat'') that best characterizes the image. The space of variations in
+the input is generally so vast and potentially so ill-understood
+mathematically that it may simply not be possible for the user to
+programmatically specify all the logic for the function.
+
+Instead we desire an approach whereby (portions of the) logic may be
+{\em learnt} by automatic techniques, given a (potentially very) large
+collection of observations (input/output pairs) of the given
+function. 
+
+Concretely, we may describe the problem as follows. Instead of
+providing a fully realized, executable function $f$, the programmer
+specifies a space $\cal F$ of possible 
+functions, obtained by varying the parameters $\theta$ of
+some parametric function $f_{\theta}$.  Also
+available is the set of {\em observations}
+$(\bar{x}_i, \bar{y}_i)$ (for $i\in I$) specifying pairs of input values with their
+associated output values, and a {\em loss function} $L$ which can take
+two values $\bar{y},\bar{y}'$ and return a real value 
+$L(\bar{y},\bar{y}')$ which measures how far one value is from the
+other. The machine learning problem is now to determine a specific
+value $\hat{\theta}$ for the parameters which minimizes
+$$\Sigma_{i \in I} L(f_\theta(\bar{x}_i), \bar{y}_i)$$
+
+Many algorithmic techniques are available, under various conditions,
+to address this problem. For instance, in situations
+where $f_{\theta}$ represents a differentiable function of its
+parameters $\theta$, one may use stochastic gradient descent to find a
+minima. Under other conditions, the Expectation Maximization algorithm
+may be used.
+
+A very powerful instance of this general picture is obtained with
+(feed forward) {\em
+  deep neural networks}. In this setting, the parametric function
+$f_{\theta}$ is given by $k$ layers of compute elements (called
+``neurons''), an element in layer $i$ connected to some (possibly all)
+elements in the preceding layer. Each neuron is associated with a set
+of weights $W$ (its parameters) used to linearly sum its inputs.
+(There is also usually a bias value.) Some non-linear
+(but differentiable) thresholding function (e.g. sigmoid, $\lambda
+t.\,(1/(1+e^{-t}))$) is used to determine the output of this
+element. One can think of the entire network as specified by a
+$k$-nested functional term, involving summations and pointwise
+applications of the thresholding function. It has been shown that any
+arbitrary non-linear (real-valued) function can be approximated
+arbitrarily closely with sufficiently many parameters, and sufficient
+training input. 
+
+What has made the machine learning problem of great interest in recent
+years is the availability of large amounts of labeled training data,
+and vast amounts of (CPU, GPU) computation that can be brought to bear
+to train the given function. A better understanding of how training
+algorithms such as asynchronous stochastic gradient networks can be
+made to work for deep networks has brought about a startling increase
+in accuracy in many applications, and a significant increase in the
+range of applications amenable to these techniques.
+
+\subsection{Learning concurrent constraint programs}
+A significant drawback of deep neural networks is their {\em
+  opacity}. In general, it is not possible to give a meaningful answer
+to the question of {\em why} the learnt program does what it
+does. At hand is simply the value of the (potentially billions of)
+parameters, poor material from which to construct causally coherent
+explanations accessible to a human observer.
+
+Our intuition is that it will be easier to develop explanations in a
+context in which the machine learning paradigm is applied to a
+logic-based programming framework, leading to a natural combination of
+symbolic computation and numeric approximation. 
+
+In this paper we show how the machine learning problem can be
+instantiated in the context of concurrent constraint programming.
+(Our main interest is going to be to develop this theory for timed
+CCP.) The major novelty of our approach is that, since it is based on
+CCP, it naturally permits the input to be only partially specified
+(rather than a fully formed image, for instance). 
+
+Recall that all concurrent constraint programs $f$ describe
+a function (a closure operator) that takes an input constraint $c$ to
+an output $f(c)$.  Our basic idea is that instead of specifying a
+fully executable cc program $f$, the programmer will supply a parametric version
+$f_{\theta}$. How do the parameters show up in the code? Clearly, we
+need to permit ask and tell constraints to contain parameters,
+e.g. $X + \alpha \geq Y$ ($\alpha$ is the parameter). 
+
+Additionally, we need to extend the notion of a constraint system to
+admit a metric  $d: {\cal C} \rightarrow {\cal C} \rightarrow {\cal
+  R}$ which takes pairs of constraints to a real value. Intuitively,
+the metric measures how ``close'' the two constraints are, e.g.{} how
+many valuations do the constraints differ on. 
+The metric must satisfy certain obvious properties, such as symmetry,
+equivalent constraints are $0$ apart from each other, and respect for
+constraint equivalence. 
+\begin{enumerate}
+\item $d(c,c')=0$ if $c \vdash c', c' \vdash c$.
+\item $d(b,c)=d(c,b)$
+\item $d(b,c)=d(b,c')$ if $c \vdash c', c' \vdash c$.
+\item {\em triangle inequality?}
+\end{enumerate}
+
+{\em Now we need to develop the algorithms that will take as input (1)
+  the parametrized program, (b) the observations, (c) the loss
+  function and output the value of the parameters that minimizes the
+  loss over the observation set.}
+
+Note that deep neural networks can be described as parametric CCP
+programs. 
+
+\newpage
+
+\bibliographystyle{alpha}
+%\bibliography{../../biblio}
+
+\end{document}

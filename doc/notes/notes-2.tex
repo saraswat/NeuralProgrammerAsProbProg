@@ -1,0 +1,260 @@
+% This is LLNCS.DOC the documentation file of
+% the LaTeX2e class from Springer-Verlag
+% for Lbecture Notes in Computer Science, version 2.4
+\documentclass{article} % For LaTeX2e
+\usepackage{nips15submit_e,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[dvips]{graphicx}
+\usepackage{xcolor}
+%\usepackage{url}
+\usepackage{colortbl}
+\usepackage{multirow}
+
+
+%\usepackage{amssymb}
+%\newtheorem{definition}{Definition} % [section]
+%\newtheorem{example}{Example} % [section]
+\newcommand{\pivot}[1]{\mathbin{\, {#1} \,}}
+\newcommand{\Pivot}[1]{\mathbin{\; {#1} \;}}
+\newcommand{\Var}[0]{\mbox{\texttt{Var}}}
+\let\from=\leftarrow
+
+\newcommand{\keywords}[1]{\par\addvspace\baselineskip
+\noindent\keywordname\enspace\ignorespaces#1}
+\input{commands.tex}
+
+\begin{document}
+%\bibliographystyle{acmtrans}
+
+\long\def\comment#1{}
+\def\mtimes{}
+\def\LL#1{#1}
+\title{Notes on ProPPR \\
+{\small (DRAFT v0.02)}}
+\author{
+Vijay Saraswat \\
+IBM T.J. Watson Research Center\\
+1101 Kitchawan Road\\
+Yorktown Heights, NY 10598 \\
+\texttt{vijay@saraswat.org} \\
+(March 2017)
+%\And
+%Radha Jagadeesan \\
+%De Paul University \\
+%243 S. Wabash Avenue \\
+%Chicago, IL 60604 \\
+%\texttt{rjagadeesan@cs.depaul.edu}
+}
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\nipsfinalcopy % Uncomment for camera-ready version
+
+\maketitle
+
+\begin{abstract}
+Probabilistic logics offer a powerful framework for approximate representation and reasoning, key to working with domain-specific information, once one moves beyond surface-level extraction of meaning from natural language texts.
+We review a recent proposed framework, ProPPR \cite{Cohen-2015} for probabilistic logic programming, intended to leverage ideas from approximate Personalized PageRank algorithms.
+%\keywords{machine learning,logic programming,PageRank,CCP}
+\end{abstract}
+
+\def\Or{\vee}
+\def\And{\wedge}
+\def\Arrow{\rightarrow}
+\def\Xor{\;\mbox{xor}\;}
+\def\Ind{\;\mbox{Ind}}
+\def\pr{\mbox{\em pr}}
+\def\apr{\mbox{apr}}
+\def\APR{\mbox{ApproxPageRank}}
+\def\push{\mbox{\em push}}
+\def\vol{\mbox{\em vol}}
+\def\Supp{\mbox{\em Supp}}
+\def\True{\mbox{\tt true}}
+\def\Fail{\mbox{\tt false}}
+\def\var{\mbox{\em var}}
+\def\tuple#1{\langle#1\rangle}
+
+\section{Introduction}
+\cite{Cohen-2015} is an innovative attempt to combine machine learning ideas drawn from the literature on PageRank with the proof theoretic underpinnings of definite clause constraint logic programming (constrained SLD-resolution). This note is my attempt at understanding the ideas and laying out the underlying mathematical background clearly.
+
+The basic idea is to view probabilistic SLD-resolution as a kind of graph traversal, and use ideas behind PageRank \cite{PageRank} to speed up traversal.
+
+\section{PageRank}
+First we cover some basics about PageRank, following \cite{Andersen-2006,Andersen-2008}. We are interested in applying to constraint-SLD graphs, which we will develop in the next section. Crucially transitions in such graphs are associated with probabilities, hence we wish to consider the setting of directed, weighted graphs, unlike \cite{Andersen-2006}.
+
+Let $G=(V,E)$ be a directed graph with vertex set $V$ (of size $n$) and edge set $E$ (of size $m$). Let ${\bf 1}_v$ be the $n$-vector which takes on value $1$ at $v$ and is $0$ elsewhere. Let $d(v)$ be the out-degree of vertex $v\in V$. A {\em distribution} over $V$ is a non-negative vector over $V$. By $\vec{k}$ we will mean the $n$-vector that takes on the value $k$ everywhere, and by ${\bf 1}_v$ we will mean the vector that is $0$ everywhere except at $v$ where it is $1$. The {\em 1-norm} of a distribution $d$ is written $|d|_1$. The {\em support} of a distribution $p$, $\Supp(p)$, is $\{v \alt p(v) \not= 0\}$. The {\em volume} of a subset $S \subseteq V$, $\vol(S)$, is the sum of the degrees of the vertices in $S$. 
+
+A {\em Markov chain} $M$ over $G$ associates with each vertex a probability distribution over its outgoing edges. Specifically, $M$ is an $n \times n$ matrix with positive elements, whose rows sum to $1$ and whose non-zero elements $M_{ij}$ (for $i,j\in 1\ldots n$) are exactly (the transition probabilities of) the edges $(i,j)\in E$. Markov chains over $G$ are our subject of interest.
+
+\begin{definition} For a Markov chain $M$, the PageRank vector $\pr_M(\alpha, s)$ is the unique solution of the linear system
+\begin{equation}
+\pr_M(\alpha, s) = \alpha s + (1 - \alpha)\pr_M(\alpha, s)M    
+\end{equation}
+\end{definition}
+(Note that this definition is in line with \cite{Andersen-2008}, but generalizes \cite{Andersen-2006} where it is given in an unweighted, undirected setting for the specific matrix $M=W=1/2(I+ D^{-1}A)$, where $A$ is the adjacency matrix and $D$ is the diagonal degree matrix.)
+
+\begin{proposition}[Linearity of $\pr_M$]\label{Prop:R}
+  For any $\alpha \in [0, 1)$ there is a linear transformation $R_{\alpha}$ s.t. $\pr_M(\alpha, s) = s R_{\alpha}$, where
+
+$$ R_{\alpha} = \alpha \Sigma_{t=0}^{\infty} (1-\alpha)^t M^t = \alpha I + (1-\alpha)M R_{\alpha}$$
+\end{proposition}
+
+\begin{proposition}
+  \begin{equation}\label{Equation-key}
+     \pr_M  (\alpha,s)=\alpha s + (1 -\alpha)\pr_M(\alpha, sM)    
+  \end{equation}
+\end{proposition}
+The proof is based on Proposition~\ref{Prop:R}:
+$$
+\begin{array}{llll}
+ \pr_M(\alpha,s) &=& sR_{\alpha} \\
+&=& \alpha s + (1-\alpha)s M R_{\alpha} & \mbox{(Proposition~\ref{Prop:R})}\\
+&=& \alpha s + (1-\alpha)\pr_M(\alpha,s M) & \mbox{(Proposition~\ref{Prop:R})}
+\end{array}
+$$
+
+\label{sec:pr-nibble} 
+The following (``PageRank Nibble'') algorithm is taken from \cite{Andersen-2006} with a slight variation (working with a Markov chain rather than an adjacency matrix). The key insight is to work with a pair of distributions $(p,r)$ satisfying:
+\begin{equation}\label{Equation-apr}
+  p + \pr_M(\alpha,r) = \pr_M(\alpha,s)
+\end{equation}
+We shall think of $p$ as an {\em approximate} PageRank vector, approximating $\pr_M(\alpha,s)$ (from below) with {\em residual} vector $r$. Below we will use the notation $\apr_M(\alpha,s,r)$ to stand for a vector $p$ in the relationship given by Equation~\ref{Equation-apr}.  We are looking for an iterative algorithm that will let us approximate $\pr_M(\alpha,s)$ as closely as we want. Specifically, we would like to get the probability mass in $p$, $|p|_1$, as close to $1$ as we want.\footnote{In this our interest is slightly different from \cite{Andersen-2006}, which focuses on application to low conductance partitions.} 
+
+We now introduce the operation $\push_u(p,r)$, generalizing \cite[Section 3]{Andersen-2006} to the setting of Markov chains (and correcting some typos in \cite[Table 2]{Cohen-2015}): 
+\begin{enumerate}
+\item Let $p'=p$ and $r'=r$ except for the following changes:
+  \begin{enumerate}
+  \item $p'(u)=p(u) + \alpha r(u)$
+  \item $r'(u) = (1-\alpha)r(u) M_{uu}$
+  \item For each $v$ s.t. $(u,v)\in E$: $r'(v)=r(v)+ (1-\alpha)r(u)M_{uv}$
+  \end{enumerate}
+\item Return $(p',r')$.
+\end{enumerate}
+\noindent It simulates one step of a random walk, at $u$, irrevocably moving some probability mass to $u$.\footnote{The definition given in \cite[Table 2]{Cohen-2015} differs in the update to $r$. However, we are not able to establish its correctness; indeed key lemmas below do not hold for that definition. We cannot relate the comment ``$\alpha'$ is a lower-bound on $\mbox{Pr}(v_0|u)$ for any node $u$ to be added to the graph $\hat{G}$'' to the code -- given the term $(\mbox{Pr}(v|u)-\alpha'){\bf r}[u]$ in the update to ${\bf r}[v]$ perhaps ``$\alpha'$ is a lower-bound on $\mbox{Pr}(v|u)$'' was intended. But, in any case, we cannot see the need for this factor; in our code the corresponding factor is $(1-\alpha)r(u)M_{uv}$. We also cannot establish the subsequent assertion ``it can be shown that afer each push ${\bf p}+{\bf r} = \mbox{\bf ppr}(v_0)$''; indeed we believe it is incorrect, the correct assertion is ${\bf p}+\mbox{\bf ppr}(\alpha,r) = \mbox{\bf ppr}(\alpha,v_0)$.} 
+
+The key lemma satisfied by this definition is:
+\begin{lemma}
+Let $p',r'$ be the result of the operation $\push_u(p,r)$. Then $p'+\pr_M(\alpha,r')=p+\pr_M(\alpha,r) (=\pr_M(\alpha,s))$. 
+\end{lemma}
+In proof, following \cite[Appendix]{Andersen-2006}, note that after a $push_u(p,r)$ operation the following is true:
+\[
+\begin{array}{l}
+  p' = p + \alpha r(u) {\bf 1}_u\\
+  r' = r - r(u) {\bf 1}_u + (1-\alpha)r(u){\bf 1}_uM
+\end{array}
+\]
+Now:
+$$
+\begin{array}{llll}
+ p+\pr_M(\alpha,r) &=& p+\pr_M(\alpha, r- r(u){\bf 1}_u) + \pr_M(\alpha, r(u){\bf 1}_u) & \mbox{(Linearity)}\\
+&=& p+\pr_M(\alpha, r- r(u){\bf 1}_u) + (\alpha r(u){\bf 1}_u + (1-\alpha)\pr_M(\alpha, r(u){\bf 1}_u M) & \mbox{(\ref{Equation-key})}\\
+&=& (p+ (\alpha r(u){\bf 1}_u) + \pr_M(\alpha, r- r(u){\bf 1}_u + (1-\alpha)r(u){\bf 1}_u M) & \mbox{(Linearity)}\\
+&=& p'+\pr_M(\alpha,r')
+\end{array}
+$$
+
+Some simple calculations establish:
+\begin{lemma}\label{Lemma:ProbMassConserve}
+  Let $p',r'$ be the result of the operation $\push_u(p,r)$. Then $|p'|_1 + |r'|_1 = |p|_1 + |r|_1$. 
+\end{lemma}
+
+Now define the $\APR(v,\alpha,e)$ algorithm as follows:
+\begin{enumerate}
+\item Let $p=\vec{0}$ and $r={\bf 1}_v$.
+\item While there exists a vertex $u\in V: r(u) \geq \epsilon d(u)$, apply $\push_u(p,r)$.
+\item Return $p$.
+\end{enumerate}
+The value returned is an $\apr(\alpha,{\bf 1}_v, r)$ s.t. for all $u \in V, r(u)< \epsilon d(u)$. Hence we get an upper bound of $\epsilon m$ on $|r|_1$ (by summing over all vertices) at the end of the program.
+
+The main results are as follows, with proofs as in \cite[Appendix]{Andersen-2006}.
+
+\begin{lemma}(\cite[Lemma 2]{Andersen-2006}) Let $T$ be the total number of push operations performed by \APR, and let $d_i$ be the degree of the vertex $u$ used in the $i$'th push. Then $\Sigma_{i=1}^T d_i \leq 1/\epsilon \alpha$.
+\end{lemma}
+
+\begin{theorem}\label{theorem:main}
+  $\APR(v,\alpha,\epsilon)$ runs in time $O(1/\epsilon \alpha)$, and computes an approximate PageRank vector $p=\apr_M(\alpha, {\bf 1}_v,r)$ s.t. $\max(1 - \epsilon m, \alpha \epsilon \Sigma_{i=1}^T d_i) < |p|_1 \leq 1 $.
+\end{theorem}
+
+We note in passing that the termination condition for the $\APR(v,\alpha,e)$ algorithm could be changed (e.g.{} to $r(u) \geq d(u)^c\epsilon$, for some constant $c$) without affecting the correctness of the algorithm. 
+
+
+
+\section{Constraint-SLD resolution}\label{sec:SLD}
+Though \cite{Cohen-2015} is presented for just definite clause programs, we shall follow the tradition of logic programming research and consider constraint logic programming, after \cite{Jaffar-1987}. This gives us significant generality and lets us avoid speaking of syntactic notions such as most general unifiers. Hence we assume an underlying constraint system $\cal C$ \cite{Saraswat-1992}, defined over a logical vocabulary. Atomic formulas in this vocabulary are called {\em constraints}. $\cal C$ specifies the notions of {\em consistency} of constraints and {\em entailment} between constraints. We assume for simplicity the existence of a vacuous constraint $\True$. 
+
+We assume a fixed program $P$, consisting of a (finite) collection of (implicitly universally quantified) clauses $h \leftarrow c, b_1, \ldots, b_k$ (where $h, b_i$ are atomic formulas and $c$ is a constraint).  Below, for a formula $\phi$ we will use the notation $\var(\phi)$ to refer to the set of variables in $\phi$. Given a set of variables $Z$ and a formula $\phi$ by $\delta Z\, \phi$ we will mean the formula $\exists V\,\phi$ where $V=\var(\phi)\setminus Z$. 
+
+We assume given an initial {\em goal} $g$ (an atomic formula), with $Z=\var(g)$. A {\em configuration} (or {\em state}) $s$ is a pair $\tuple{a_1, \ldots, a_n; c}$, with $n\geq 0$, $c$ a constraint, and goals $a_i$. The {\em variables} of the state are $\var(a_1\wedge\ldots\wedge a_n\wedge c)$. $s$ is said to be {\em successful} if $n=0$, {\em consistent} if $c$ is consistent and {\em failed} (or {\em inconsistent}) if $c$ is inconsistent. 
+
+Two states $\tuple{a_1, \ldots, a_n; c}$ and $\tuple{b_1, \ldots, b_k; d}$ are equivalent if $\vdash \delta Z (a_1 \wedge \ldots \wedge a_n \wedge c) \Leftrightarrow \delta Z (b_1 \wedge \ldots \wedge b_k \wedge d)$ (where the $\vdash$ represents the entailment relation of the underlying logic, including the constraint entailment relation). Note that any two inconsistent states are equivalent, per this definition. 
+
+We now consider the transitions between states. For simplicity, we shall confine ourselves to a fixed {\em selection rule}. Given the sequence of goals in a state, a selection rule chooses one of those goals for execution. Logically, any goal can be chosen (e.g.{} Prolog chooses the first goal).
+
+A clause is said to be {\em renamed apart} from a state if it has no variables in common with the state.  If $g=p(s_1,\ldots,s_k)$ and $h=p(t_1,\ldots, t_k)$ are two atomic formulas with the same predicate $p$ and arity $k$, then $g=h$ stands for the collection of equalities $s_1=t_1, \ldots, s_k=t_k$. 
+We say that a state 
+$s=\tuple{a_1, \ldots, a_n; c}$ {\em can transition to} 
+a state $\tuple{a_1, \ldots, a_{i-1}, b_1, \ldots, b_k, a_{i+1}, \ldots a_n; c, d, (a_i=h)}$  provided that (a)~$s$ is consistent, (b)~$a_i$ is chosen by the selection rule, (c)~there is a clause $C=h \leftarrow d, b_1,\ldots, b_k$ in $P$, renamed apart from $s$ s.t.{} $h$ and $a_i$ are atomic formulas with the same predicate name and arity. We say that $a_i$ is the {\em selected goal} (for the transition) and $C$ the {\em selected clause}. 
+
+Note that the current state will have at most $k$ states it can transition to, if the program has $k$ clauses with the predicate and arity of the selected goal.\footnote{Note that in theory a clause has an infinite number of variants that are renamed apart from a given state. It can be shown that only one of them needs to be considered for selection, the results for all other choices can be obtained by merely renaming the results for this choice.} It will have fewer than $k$ if resulting states are equivalent. Of course, not all resulting configurations may be consistent.  Finally, note that a state may transit to itself.\footnote{Consider for instance a program with a clause $p(X)\leftarrow p(X)$, and configuration $\tuple{p(U),\True}$, with $Z=\emptyset$. This configuration is equivalent to the one obtained after transition, $\tuple{p(X),\True}$.} 
+
+Constraint-SLD resolution starts with a state $\tuple{g;\True}$ and transitions to successive states, until a state is reached which is successful or failed. 
+
+We are interested in {\em stochastic logic programs}. For the purposes of this note, these are programs that supply with each transition a {\em probability} for the transition (a non-negative number bounded by $1$) in such a way that the sum of the probabilities across all transitions from this state is $1$. The probabilities may depend on the current state. In stochastic logic programs as described in \cite{Muggleton-1996} the probability is a number directly associated with the clause (and independent of the state). \cite{Cohen-2015} describes a more elaborate setting: a clause specifies ``features'' (dependent on the current state) which are combined with a (learnt) matrix of weights to produce the probability. For the purposes of this note we shall not be concerned with the specific mechanism. 
+
+Note that multiple transitions from a state $s$ (each using a different clause) may lead to the same (equivalent) state $t$. In such cases we consider that there is only one transition $s \rightarrow t$, and its associated probability is the sum of the probabilitives across all clauses contributing to the transition. 
+
+In general, we will only be concerned with goals that have a finite derivation graph. This can be guaranteed by placing restrictions on the expressiveness of programs (e.g. by requiring that programs satisfy the Datalog condition), but we shall not make such further requirements. 
+
+\subsection{Learning weights via training, using probabiistic constraint-SLD resolution}
+Top-down proof procedures for definite clauses, such as SLD, are readily adaptable to probabilistic calculations proofs and are not susceptible to the ``grounding'' problem that plagues Markov Logic Networks \cite{domingos:srl07}. See e.g. \cite{Saraswat-2016-pcc} for an implementation. One simply implements a meta-interpreter which carries the probability mass generated on the current branch, multiplying the current value with the probability of the clause used to extend the proof by one step, discarding failed derivations, and summing up the results for different derivations of the same result. 
+
+Training can be performed in a routine fashion. Given a proof tree for a particular query, the features used in each clause in the proof (and hence the weights used) are uniquely determined. A loss function similar to the one in \cite[Sec 3.3]{Cohen-2015} can be used to determine the gradient, and this can be propagated back to each weight used in the proof. Training for each query can be performed independently (the proof trees construted in parallel); though, as usual for SGD, weights must be updated using the gradients from all examples (e.g.{} in a mini-batch). 
+
+Note that the procedure described here naturally takes care of ``impure'' programs, that is, programs some of whose predicates have non-probabilitic clauses. This is the case in most real-world programs -- certain parts of the program (e.g.{} those that deal with operations on data-structures) are usually deterministic. While finding a probabilistic SLD-refutation, steps that do not involve a probabilistic goal do not contribute to updating the probability associated with the branch. 
+
+In passing, we note that it is advisable to adopt an ``Andorra''-style execution strategy which favors the selection of non-probabilistic predicates for execution, as long as there are any in the current resolvent. Among probabilistic goals, those with the least degree may be preferred. Most (constraint) logic programming implementations do not canonicalize and record generated states because of the book-keeping expense. Whether that is useful in the current setting should be determined empirically. 
+\section{Applying PageRank to constraint-SLD graphs}
+We consider now the application of PageRank to constraint-SLD graphs, as described in \cite{Cohen-2015} (but modified per Sections~\ref{sec:pr-nibble} and~\ref{sec:SLD}) and discuss its features. 
+
+\cite[Sec 3.2]{Cohen-2015} proposes to use the PageRank-Nibble algorithm (Section~\ref{sec:pr-nibble}) to generate a constrained-SLD graph, per the following procedure (\cite[Table 4]{Cohen-2015} with some typos corrected):
+\begin{enumerate}
+\item Let $p = \APR(\tuple{Q;\True},\alpha,\epsilon)$.
+\item Let $S=\{ u : p(u) > \epsilon, u=\tuple{;c}\}$.
+\item Let $Z=\Sigma_{u\in S} p(u)$.
+\item For every solution $u=\tuple{;c}$ define $\Pr(u)=(1/Z) p(u)$.
+\end{enumerate}
+Running \APR{} will produce an SLD-graph with $O(1/\alpha\epsilon)$ nodes; this is independent of the size of the program (and its included database). The algorithm will also work with loops in the graph (as might be generated, for example, by recursive programs). 
+
+Unfortunately, the procedure is oblivious to the logical interpretation of the graph. In particular there is no guarantee that on termination the graph will contain {\em any} proof of the query described by the initial node $v$. Worse, even if the graph contains a successful terminal node (corresponding to a proof), if is does not contain nodes corresponding to {\em all} the proofs, the estimate of probability (computed in the last line of the algorithm above) could be arbitrarily off as we now analyze.
+
+
+Consider a solution $u\in S$ computed by the PageRank-Nibble algorithm, with probability estimate $p(u)$. We consider now numerous factors that bear on the relationship between $p(u)$ and $\Pr(u)$, the true probability of $u$. 
+
+First, note that (unlike the claim in \cite{Cohen-2015}\footnote{\cite[Sec 2.2]{Cohen-2015} ``Specifically, following their proof technique, it can be shown that after each push, ${\bf p} + {\bf r}={\bf ppr}(v_0)$. It is also clear that when PageRank-Nibble terminates, then for any $u$, the error ${\bf ppr}(v_0)[u]-{\bf p}[u]$  is bounded by $\epsilon |N(u)|$ \ldots''}) the error on $p(u)$ is {\em not} bound by $\epsilon d(u)$. While $r(u) < \epsilon d(u)$, the error $\pr_M(\alpha,{\bf 1}_v)(u)- p(u)$ is $\pr_M(\alpha,r)(u)$, not $r(u)$.  The only other conclusion that can be made is on the lower bound for $|p|_1$ (of which $p(u)$ is a summand). 
+
+Second, note that the probability of a final solution is the sum of all paths to that solution, divided by the sum of probabilities of all solutions. In particular the probability mass $|p|_1 - Z$ is allocated to either failed nodes or intermediate nodes. Ultimately, all of this must be divided up among successful nodes.
+
+Let $\Fail$ stand for the node corresponding to the inconsistent state, with probability estimate $p(\Fail)$. The residual unallocated probability mass is then $1-(Z+p(\Fail))$. Some of it may go to failed nodes, rest must go to successful nodes. Consider several possibilities:
+\begin{enumerate}
+\item All the probability mass goes to $\Fail$. In this case, $\Pr(u)=p(u)/Z$, as estimated above.
+\item All the probability mass goes to other solutions. In this case, $\Pr(u)=p(u)/(1-p(\Fail))$. 
+\item All the probability mass goes to $u$. In this case,
+$\Pr(u)=(p(u) + (1-(Z+p(\Fail))))/(1-p(\Fail)) = 1-(Z-p(u))/(1-p(\Fail))$.
+\end{enumerate}
+As we can see, the actual value may be a factor of $Z$ off (second case, $p(\Fail)=0$, $\Pr(u)=p(u)$). Numerically, $\Pr(u)$ may be close to $1$, even though $p(u)/Z$ is extremely small (e.g.{} $p(u)=0.001, Z=0.1, p(\Fail)=0$  gives an estimate of $0.01$ for a true value of $0.901$). 
+
+Thus $p(u)/Z$ cannot be used as a reliable predictor for $\Pr(u)$ unless $Z$ is close to $1$. But how much work has to be expended to get to a proof-graph for which $Z$ is close to $1$ ultimately depends on the logical structure of the program and may not be very strongly dependent on the particular control strategy used to develop the proof-graph.
+
+\paragraph{Conclusions.} 
+We believe that a practical probabilistic logical system can be built utilizing the idea of per-clause features, and trainable weights to learn probability distributions. However, PageRank-based ideas may not be as useful as we thought.
+
+\paragraph{Acknowledgements.} 
+Thanks to Radha Jagadeesan, Kyle Gao and Cristina Cornelio for discussions, and to William Cohen and Kathryn Mazaitis for responding to questions. The responsibility for conclusions drawn above remains mine...
+\bibliographystyle{alpha}
+\bibliography{master}
+
+
+
+\end{document}

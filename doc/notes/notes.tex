@@ -1,0 +1,207 @@
+% This is LLNCS.DOC the documentation file of
+% the LaTeX2e class from Springer-Verlag
+% for Lbecture Notes in Computer Science, version 2.4
+\documentclass{article} % For LaTeX2e
+\usepackage{nips15submit_e,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[dvips]{graphicx}
+\usepackage{xcolor}
+%\usepackage{url}
+\usepackage{colortbl}
+\usepackage{multirow}
+
+
+%\usepackage{amssymb}
+%\newtheorem{definition}{Definition} % [section]
+%\newtheorem{example}{Example} % [section]
+\newcommand{\pivot}[1]{\mathbin{\, {#1} \,}}
+\newcommand{\Pivot}[1]{\mathbin{\; {#1} \;}}
+\newcommand{\Var}[0]{\mbox{\texttt{Var}}}
+\let\from=\leftarrow
+
+\newcommand{\keywords}[1]{\par\addvspace\baselineskip
+\noindent\keywordname\enspace\ignorespaces#1}
+\input{commands.tex}
+
+\begin{document}
+%\bibliographystyle{acmtrans}
+
+\long\def\comment#1{}
+\def\mtimes{}
+\def\LL#1{#1}
+\title{Notes on ProPPR \\
+{\small ***DRAFT v0.01 ***}}
+
+\author{
+%Vijay Saraswat \\
+%IBM T.J. Watson Research Center\\
+%1101 Kitchawan Road\\
+%Yorktown Heights, NY 10598 \\
+%\texttt{vijay@saraswat.org} \\
+%\And
+%Radha Jagadeesan \\
+%De Paul University \\
+%243 S. Wabash Avenue \\
+%Chicago, IL 60604 \\
+%\texttt{rjagadeesan@cs.depaul.edu}
+}
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\nipsfinalcopy % Uncomment for camera-ready version
+
+\maketitle
+
+\begin{abstract}
+
+%\keywords{machine learning, concurrent constraint programming}
+\end{abstract}
+
+\def\Or{\vee}
+\def\And{\wedge}
+\def\Arrow{\rightarrow}
+\def\Xor{\;\mbox{xor}\;}
+\def\Ind{\;\mbox{Ind}}
+\def\pr{\mbox{\em pr}}
+\def\apr{\mbox{apr}}
+\def\APR{\mbox{ApproxPageRank}}
+\def\push{\mbox{\em push}}
+\def\vol{\mbox{\em vol}}
+\def\Supp{\mbox{\em Supp}}
+\def\True{\mbox{\tt true}}
+\def\var{\mbox{\em var}}
+\def\tuple#1{\langle#1\rangle}
+
+\section{Introduction}
+\cite{Cohen-2015} is an innovative attempt to combine machine learning ideas drawn from the literature on PageRank with the proof theoretic underpinnings of definite clause constraint logic programming (constrained SLD-resolution). This note is my attempt at understanding the ideas and laying out the underlying mathematical background clearly.
+
+The basic idea is to view probabilistic SLD-resolution as a kind of graph traversal, and use ideas behind PageRank \cite{PageRank} to speed up traversal.
+
+\section{PageRank}
+First we cover some basics about PageRank, following \cite{Andersen-2006,Andersen-2008}. Our interest is to develop the basics in such a way that they can directly apply to constraint-SLD graphs, which we will develop in the next section. Crucially transitions in such graphs are associated with probabilities, hence we wish to consider the setting of directed, weighted graphs, unlike \cite{Andersen-2006}.
+
+Let $G=(V,E)$ be a directed graph with vertex set $V$ (of size $n$) and edge set $E$ (of size $m$). Let ${\bf 1}_v$ be the $n$-vector which takes on value $1$ at $v$ and is $0$ elsewhere. Let $d(v)$ be the out-degree of vertex $v\in V$. A {\em distribution} over $V$ is a non-negative vector over $V$. The {\em support} of a distribution $p$, $\Supp(p)$ is $\{v \alt p(v) \not= 0\}$. The {\em volume} of a subset $S \subseteq V$, $\vol(S)$ is the sum of the degrees of the vertices in $S$. 
+
+Let $M$ be a Markov chain over $G$, i.e.{} an $n \times n$ matrix with positive elements, whose rows sum to $1$ and whose non-zero elements $M_{ij}$ (for $i,j\in 1\ldots n$) are exactly (the transition probabilities of) the edges $(i,j)\in E$. Markov chains over $G$ are our subject of interest.
+
+\begin{definition} For a Markov chain $M$, the PageRank vector $\pr_M(\alpha, s)$ is the unique solution of the linear system
+\begin{equation}
+\pr_M(\alpha, s) = \alpha s + (1 - \alpha)\pr_M(\alpha, s)M    
+\end{equation}
+\end{definition}
+(Note that this definition is in line with \cite{Andersen-2008}, but generalizes \cite{Andersen-2006} where it is given in an unweighted, undirected setting for the specific matrix $M=W=1/2(I+ D^{-1}A)$, where $A$ is the adjacency matrix and $D$ is the diagonal degree matrix.)
+
+\begin{proposition}\label{Prop:R}
+  For any $\alpha \in [0, 1)$ there is a linear transformation $R_{\alpha}$ s.t. $\pr_M(\alpha, s) = s R_{\alpha}$, where
+
+$$ R_{\alpha} = \alpha \Sigma_{t=0}^{\infty} (1-\alpha)^t M^t = \alpha I + (1-\alpha)M R_{\alpha}$$
+\end{proposition}
+
+\begin{proposition}
+  \begin{equation}\label{Equation-key}
+     \pr_M  (\alpha,s)=\alpha s + (1 -\alpha)\pr_M(\alpha, sM)    
+  \end{equation}
+\end{proposition}
+The proof is elementary:
+$$
+\begin{array}{llll}
+ \pr_M(\alpha,s) &=& sR_{\alpha} \\
+&=& \alpha s + (1-\alpha)s M R_{\alpha} & \mbox{(Proposition~\ref{Prop:R})}\\
+&=& \alpha s + (1-\alpha)\pr_M(\alpha,s M) & \mbox{(Proposition~\ref{Prop:R})}
+\end{array}
+$$
+
+The following (``PageRank Nibble'') algorithm is taken from \cite{Andersen-2006} with a slight variation (working with a Markov chain rather than an adjacency matrix). The key insight is to work with a pair of distributions $(p,r)$ satisfying:
+\begin{equation}\label{Equation-apr}
+  p + \pr_M(\alpha,r) = \pr_M(\alpha,s)
+\end{equation}
+We shall think of $p$ as an {\em approximate} PageRank vector, approximating $\pr_M(\alpha,s)$ (from below) with {\em residual} vector $r$. Below we will use the notation $\apr_M(\alpha,s,r)$ to stand for a vector $p$ in the relationship given by Equation~\ref{Equation-apr}. 
+
+We now introduce the operation $\push_u(p,r)$, generalizing \cite[Section 3]{Andersen-2006} to the setting of Markov chains (and correcting some typos in \cite[Table 2]{Cohen-2015}): 
+\begin{enumerate}
+\item Let $p'=p$ and $r'=r$ except for the following changes:
+  \begin{enumerate}
+  \item $p'(u)=p(u) + \alpha r(u)$
+  \item $r'(u) = (1-\alpha)r(u) M_{uu}$
+  \item For each $v$ s.t. $(u,v)\in E$: $r'(v)=r(v)+ (1-\alpha)r(u)M_{uv}$
+  \end{enumerate}
+\item Return $(p',r')$.
+\end{enumerate}
+\noindent It simulates one step of a random walk, at $u$. 
+
+The key lemma satisfied by this definition is:
+\begin{lemma}
+Let $p',r'$ be the result of the operation $\push_u(p,r)$. Then $p'+\pr_M(\alpha,r')=p+\pr_M(\alpha,r) (=\pr_M(\alpha,s))$. 
+\end{lemma}
+In proof, following \cite[Appendix]{Andersen-2006}, note that after a $push_u(p,r)$ operation, the following is true:
+\[
+\begin{array}{l}
+  p' = p + \alpha r(u) {\bf 1}_u\\
+  r' = r - r(u) {\bf 1}_u + (1-\alpha)r(u){\bf 1}_uM
+\end{array}
+\]
+Now:
+$$
+\begin{array}{llll}
+ p+\pr_M(\alpha,r) &=& p+\pr_M(\alpha, r- r(u){\bf 1}_u) + \pr_M(\alpha, r(u){\bf 1}_u) & \mbox{(Linearity)}\\
+&=& p+\pr_M(\alpha, r- r(u){\bf 1}_u) + (\alpha r(u){\bf 1}_u + (1-\alpha)\pr_M(\alpha, r(u){\bf 1}_u M) & \mbox{(\ref{Equation-key})}\\
+&=& (p+ (\alpha r(u){\bf 1}_u) + \pr_M(\alpha, r- r(u){\bf 1}_u + (1-\alpha)r(u){\bf 1}_u M) & \mbox{(Linearity)}\\
+&=& p'+\pr_M(\alpha,r')
+\end{array}
+$$
+
+Now define the $\APR(v,\alpha,e)$ algorithm as follows:
+\begin{enumerate}
+\item Let $p=\vec{0}$ and $r={\bf 1}_v$.
+\item While there exists a vertex $u\in V: (r(u)/d(u)) \geq \epsilon$, apply $\push_u(p,r)$.
+\item Return $p$.
+\end{enumerate}
+The value returned is an $\apr(\alpha,{\bf 1}_v, r)$ s.t. for all $u \in V, r(u)< \epsilon d(u)$. 
+
+The following are the main results, with proofs as in \cite[Appendix]{Andersen-2006}.
+
+\begin{lemma}(\cite[Lemma 2]{Andersen-2006}) Let $T$ be the total number of push operations performed by \APR, and let $d_i$ be the degree of the vertex $u$ used in the $i$'th push. Then $\Sigma_{i=1}^T d_i \leq (1/\epsilon \alpha)$.
+\end{lemma}
+
+\begin{theorem}(\cite[Theorem 1]{Andersen-2006})
+  $\APR(v,\alpha,\epsilon)$ runs in time $O(1/(\epsilon \alpha))$, and computes an approximate PageRank vector $p=\apr_M(\alpha, {\bf 1}_v,r)$ s.t. $\vol(\Supp(p))\leq 1/(\epsilon\alpha)$ and for all $u\in V$, $r(u) < \epsilon d(u)$.
+\end{theorem}
+
+\section{Constrained SLD-resolution}
+Though \cite{Cohen-2015} is presented for just definite clause programs, we shall follow the tradition of logic programming research and consider constraint logic programming, after \cite{Jaffar-1987}. This gives us significant generality and lets us avoid speaking of syntactic notions such as most general unifiers. Hence we assume an underlying constraint system $\cal C$ \cite{Saraswat-1992}, defined over a logical vocabulary. Atomic formulas in this vocabulary are called {\em constraints}. $\cal C$ specifies the notions of {\em consistency} of constraints and {\em entailment} between constraints. We assume for simplicity the existence of a vacuous constraint $\True$. 
+
+We assume a fixed program $P$, consisting of a (finite) collection of (implicitly universally quantified) clauses $h \leftarrow c, b_1, \ldots, b_k$ (where $h, b_i$ are atomic formulas and $c$ is a constraint).  Below, for a formula $\phi$ we will use the notation $\var(\phi)$ to refer to the set of variables in $\phi$. Given a set of variables $Z$ and a formula $\phi$ by $\delta Z\, \phi$ we will mean the formula $\exists V\,\phi$ where $V=\var(\phi)\setminus Z$. 
+
+We assume given an initial {\em goal} $g$ (an atomic formula), with $Z=\var(g)$. A {\em configuration} (or {\em state}) $s$ is a pair $\tuple{a_1, \ldots, a_n; c}$, with $n\geq 0$, $c$ a constraint, and goals $a_i$. The {\em variables} of the state are $\var(a_1\wedge\ldots\wedge a_n\wedge c)$. $s$ is said to be {\em successful} if $n=0$, {\em consistent} if $c$ is consistent and {\em failed} (or {\em inconsistent}) if $c$ is inconsistent. 
+
+Two states $\tuple{a_1, \ldots, a_n; c}$ and $\tuple{b_1, \ldots, b_k; d}$ are equivalent if $\vdash \delta Z (a_1 \wedge \ldots \wedge a_n \wedge c) \Leftrightarrow \delta Z (b_1 \wedge \ldots \wedge b_k \wedge d)$ (where the $\vdash$ represents the entailment relation of the underlying logic, including the constraint entailment relation). Note that any two inconsistent states are equivalent, per this definition. 
+
+We now consider the transitions between states. For simplicity, we shall confine ourselves to a fixed {\em selection rule}. Given the sequence of goals in a state, a selection rule chooses one of those goals for execution. Logically, any goal can be chosen (e.g.{} Prolog chooses the first goal).
+
+A clause is said to be {\em renamed apart} from a state if it has no variables in common with the state.  If $g=p(s_1,\ldots,s_k)$ and $h=p(t_1,\ldots, t_k)$ are two atomic formulas with the same predicate $p$ and arity $k$, then $g=h$ stands for the collection of equalities $s_1=t_1, \ldots, s_k=t_k$. 
+We say that a state 
+$s=\tuple{a_1, \ldots, a_n; c}$ {\em can transition to} 
+a state $\tuple{a_1, \ldots, a_{i-1}, b_1, \ldots, b_k, a_{i+1}, \ldots a_n; c, d, (a_i=h)}$  provided that (a)~$s$ is consistent, (b)~$a_i$ is chosen by the selection rule, (c)~there is a clause $C=h \leftarrow d, b_1,\ldots, b_k$ in $P$, renamed apart from $s$ s.t.{} $h$ and $a_i$ are atomic formulas with the same predicate name and arity. We say that $a_i$ is the {\em selected goal} (for the transition) and $C$ the {\em selected clause}. 
+
+Note that the current state will have at most $k$ states it can transition to, if the program has $k$ clauses with the predicate and arity of the selected goal.\footnote{Note that in theory a clause has an infinite number of variants that are renamed apart from a given state. It can be shown that only one of them needs to be considered for selection, the results for all other choices can be obtained by merely renaming the results for this choice.} It will have fewer than $k$ if resulting states are equivalent. Of course, not all resulting configurations may be consistent.  Finally, note that a state may transit to itself.\footnote{Consider for instance a program with a clause $p(X)\leftarrow p(X)$, and configuration $\tuple{p(U),\True}$, with $Z=\emptyset$. This configuration is equivalent to the one obtained after transition, $\tuple{p(X),\True}$. 
+
+Constrained SLD-resolution starts with a state $\tuple{g;\True}$ and transitions to successive states, until a state is reached which is successful or failed. 
+
+We are interested in {\em stochastic logic programs}. For the purposes of this note, these are programs that supply with each transition a {\em probability} for the transition (a non-negative number bounded by $1$) in such a way that the sum of the probabilities across all transitions from this state is $1$. The probabilities may depend on the current state. In stochastic logic programs as described in \cite{Muggleton-1996} the probability is a number directly associated with the clause (and independent of the state). \cite{Cohen-2015} describes a more elaborate setting: a clause specifies ``features'' (dependent on the current state) which are combined with a (learnt) matrix of weights to produce the probability. For the purposes of this note we shall not be concerned with the specific mechanism. 
+
+Note that multiple transitions from a state $s$ (each using a different clause) may lead to the same (equivalent) state $t$. In such cases we consider that there is only one transition $s \rightarrow t$, and its associated probability is the sum of the probabilities across all clauses contributing to the transition. 
+
+In general, we will only be concerned with goals that have a finite derivation graph. This can be guaranteed by placing restrictions on the expressiveness of programs (e.g. by requiring that programs satisfy the Datalog condition), but we shall not make such further requirements. 
+
+\section{Applying PageRank to constraint-SLD graphs}
+
+\paragraph{Acknowledgements.} 
+
+\bibliographystyle{alpha}
+\bibliography{master}
+
+
+
+\end{document}

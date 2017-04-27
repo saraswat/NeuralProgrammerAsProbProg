@@ -1,0 +1,51 @@
+Sat Feb 25 08:18:07 EST 2017
+
+Unfortunately, the PCC / SLP model doesn't quite work -- we want to learn probability
+distributions that are *dependent* on certain arguments.
+
+Consider the program np_proppr.pl. Here we specify a predicate program/3 that takes as arguments Utterance, Table and Ans. At training time we are given a large number of examples (~ 10K or so), which contain (as it turns out, ground) tuples that are in the given relation.
+
+At test time, we would like to supply only the values of Utterance and Table, and generate Ans.
+
+That is, we want to learn a function that takes as input an (Utterance,  M x C Table) pair and produces a sequence of T probability distributions, each identifying one of 15 operations, one of the numbers between 1..C, and depending on the operation, one of the numbers in the utterance.
+
+   p(T1 | utterance, table)
+   p(T2 | T1, utterance, table)
+   p(Tk | Tk-1, ..., T1, utterance, table)
+
+One way to address this is described in [Neelakantan 2017]. One creates a setence vector , q, for the utterance. Then one uses an RNN. At each stage, the hidden state of the RNN and q is used to generate the state for the Op and column choice (using appropriate-sized matrices of weights). Using softmax this is converted into a probability distribution over the O operations and C columns, respectively. These distributions are used (this is the soft-select strategy) to update the row_select vector for the next iteration (this is how information is transmitted across program evaluation steps). The pds are then fed back as input to the RNN to generate the next state and so on. 
+
+The SLP model does not distinguish input/output polarity. It learns probabilities for the specified clauses so that the expectation of the given goals is maximized. 
+
+I do not believe this will give us good answers for the Neural Programmer problem. All we will get are a fixed probability distribution for the op/1 and col/2 predicates that are independent of the actual content of the utterance. So the learning is going to end up tapping a very weak signal. 
+
+Ideally, we want to set up a system that learns from the incoming sentence and table headers the right program.
+
+(Hmm, the learner should not be shown the actual contents to learn from, just do the calculations from...?)
+
+So we should progress as follows.
+
+We need to make two changes:
+
+(a) Somehow we have to define not just probability distributions, but also specify what the probability distributions depend on. Here, they they depend on the input utterance and table.
+
+We do this by generalizing the X ~ pd "sampling" construct in probabilistic CCP to the "conditional sampling" construct:
+
+    X | V1, ..., Vk ~ pd
+
+This is to be understood as saying given the values the variables V1, ..., Vk, X is to be drawn from the given
+
+The general idea abstracting from ProPPR, is that of course they should depend, generically, on the state. For ProPPR, these are the feature (terms) in each clause, for us they could be constraints that are entailed by the store. Groundness should not be required -- instead we can think of the term being appropriately existentially quantified. 
+
+  (TODO: How does ProPPR ensure that the number of features are finite?)
+
+(b) (ProPPR idea) Change the focus from a random variable and its probability distribution to feature vectors -- in essence each "choice" is associated with multiple numbers, a whole vector full of numbers. These contribute to the desired pd through learnable weights. 
+
+That is really all there is to it!
+
+And then training is via SGD.
+
+So this is a general recipe for SLP / PCC programs?
+
+
+  

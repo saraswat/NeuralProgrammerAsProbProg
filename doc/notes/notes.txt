@@ -1,0 +1,79 @@
+Sat May 28 16:12:38 EDT 2016
+
+We consider a variant of the presentation of Boolean formulas as real-valued multi-linear polynomials, where the underlying domain is taken to be {0,1} rather than {-1,1}.
+
+Domain: {0,1}
+true=1
+false=0
+not a = 1-a
+a and b = ab
+
+The definition of the other operators (or, xor etc) follows. 
+Polynomials can be simplified with x.x=x. 
+
+In particular:
+a or b = 1-(1-a)(1-b)
+a -> b = 1-a(1-b)
+a xor b = ab + (1-a)(1-b)
+
+Specifically we can write the indicator function, Ind_a(x) which, for vectors a and x returns 1 if a equals x, else 0.
+
+Ind_a(x) = 1 if a=x, 0 ow
+= ax + (1-a)(1-x)
+= ax + 1-a-x+ax
+= 1-(a+x-2ax)
+= 1-(a-x)^2
+
+Therefore Fourier expansion still holds. Any function f:{0,1}^n-> R can be represented as a multi-linear polynomial sum(a in {0,1}^n) f(a)*Ind_a(x).
+
+Lets work out and2:
+
+and2(x) = 
+  = 1.(1*x1+ 0.(1-x1))(x2*1+0*(1-x2))
+    + 0.Ind_(1,0)
+    + 0.Ind_(0,1)
+    + 0.Ind_(0,0)
+  = x1.x2
+
+General representation of a clause:
+a1,..., an -> b1; ...; bk = 1-a1*...*an*(1-b1)*...(1-bk)
+
+(Think: a1,..., an -> b1; ...; bk is the same as not((a1 and... an)and (not b1) and ... and (not bk)).)
+
+
+Specifically:
+a1, ..., an -> b = 1-a1*..*an(1-b)  -- definite clause
+a1, ..., an ->   = 1-a1*...*an      -- negative clause
+-> b             = b                -- unit clause
+
+
+Now we can see how unit resolution works. 
+
+Given a=1, we can reduce 
+
+   1-a*phi
+ 
+to 1-phi
+
+Given a=0, we can reduce
+ 
+   1 - (1-a)*phi
+
+to 1-phi
+
+More generally, one can think of definite clause programming thus. We are given a theory, corresponding to a collection of clauses, (1-phi1), ..., (1-phik), where each phik is a product of positive literals (of the form a, for some variable a) and exactly one negative literals (of the form 1-b for some variable b). We are only interested in valuations that are zeros of the phii (such valuations assign 1 to each of the clauses). 
+
+Now we are given a monomial a1*...*ak (the "current resolvent") and we are trying to establish that for every such valuation it must evaluate to 1. We establish this by looking for a formula psi, such that if every such valuation assigns 1 to psi, then it must assign 1 to a1*...*ak, and keep repeating until we arrive at the formula true. Thus gives us a proof. 
+
+How do we look for this formula? We look for a clause b1*..*bj*(1-ai), and replace a1*...*ak with a1*...*a(i-1)*b1*...*bj*a(i+1)*....ak.
+
+Why is this sound? Because a v that assigns 0 to b1*...*bj*(1-ai) and 1 to a1*...*a(i-1)*b1*...*bj*a(i+1)*....ak can only do so by assigning 1 to b1,..., bj, 1 to ai, and 1 to each of a1,..., a(i-1), a(i+1),..., ak. 
+
+
+-- Use in optimization. e,g, go back to constrained clustering, machine learning.
+
+-- convex optimization
+
+
+Applications in constraint programming, through the first order formulation from Radha.
+
