@@ -79,7 +79,7 @@ prev, next: Rows -> Rows
 first: Rows -> Row
 ```
 
-`prev(r)` (`next(r)`) returns the subsequence of rows obtained by taking the preceding (succeeding) row in the original table (if it exists) for each row in `r`. 
+`prev(r)` (`next(r)`) returns the subsequence of rows obtained by taking the preceding (succeeding) row in the original table (if it exists) for each row in `r`. `first(r)` returns the first row in `r`. 
 
 ### Projection
 ```
