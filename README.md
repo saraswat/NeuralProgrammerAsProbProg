@@ -1,12 +1,12 @@
 # NeuralProgrammerAsProbProg
-Goal is to work with the examples in [Arvind Neelakantan's work](https://arxiv.org/abs/1611.08945) and understand them as examples we could represent in Probabilistic CC (and implement via translation to [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/)). And if we cannot, why not -- this should help us understand the practical limitations of Probabilistic CC vs neural nets. 
+Goal is to work with the examples in [Arvind Neelakantan's work](https://arxiv.org/abs/1611.08945) and understand how to use other semantic parsing techniques to improve performance. 
 
-For now, we will approximate PCC with definite clauses that have a fixed (left to right) order of evaluation, and ensure that our programs are such that atoms `cond` used in a sample operator `X | cond ~ PD` are ground when executed.
+One main line of attack is to use Probabilistic CC (and implement via translation to [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/)).  For now, we will approximate PCC with definite clauses that have a fixed (left to right) order of evaluation, and ensure that our programs are such that atoms `cond` used in a sample operator `X | cond ~ PD` are ground when executed.
 
 The overall problem to be solved: Design a system that can take as input
   1. an utterance
   2. a table
-and compute an answer to the question in the utterance, using only the information in the table. The number of columns of the table and their header and row information can vary from question to question. Cell entries may have numbers or multiple words. The training set available is a corpus `(x_i, t_i, a_i)_i` where `x_i` is the utterance, `t_i` a table and `a_i` is the answer. The program is latent.
+and compute an answer to the question in the utterance, using only the information in the table. The number of columns of the table and their header and row information can vary from question to question. Entries in the table (cells) may have numbers or multiple words. The training set available is a corpus `(x_i, t_i, a_i)_i` where `x_i` is the utterance, `t_i` a table and `a_i` is the answer. The program is latent. The corpus is described in [7]. Note that with 37% results, there is considerable room for improvement!
 
 The basic approach is to augment a probabilistic CCP semantic parser with an evaluator of the logical form.
 ```prolog
@@ -16,7 +16,7 @@ result(Query, Table, Ans):- parse(Query, Form), eval(Form, Table, Ans).
 
 Note that `Form` does not occur in the head of the clause -- it is "latent". Training is performed on a bunch of ground ``result/3`` triples. At test time, `Query` and `Table` are instantiated, and `Ans` is unknown and computed by the program. We will use [Cussen's Failure Adjusted Maximisation (FAM) algorithm](http://link.springer.com/article/10.1023/A:1010924021315) (based on EM) for training. We will use the Viterbi algorithm in PRISM to compute the most probable solution. Both these techniques are implemented in [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/).
 
-_Q for Abu: Is your implemented system using techniques similar to PRISM's Viterbi training (see [5]) + generalized inside-out algorithm [see [2]), or are there different ideas?_
+_Q for Abu: Is your implemented system using techniques similar to PRISM's Viterbi training (see [5]) + generalized inside-out algorithm [see [2]), or are there different ideas? [5] contains a discussion of statistical parsing in this context._
 
 Note that to help the training process it may make sense to augment the training set with some `parse/2` pairs, and some `eval/3` triples. It will be interesting to determine how overall performance improves with these augmentations. 
 
@@ -30,12 +30,12 @@ _Q: What is the analog of [Arvind's](https://arxiv.org/abs/1611.08945) "soft sel
 
 Note the answer may be a number that occurs directly in the table. We will represent this by permitting the evaluator to be non-deterministic -- choose either the number in the table, or choose the computed answer -- and let the choice be conditioned by the logical form, and then letting training determine the probability distribution.
 
-## Decisions to be made.
+##Other Approaches
 In this approach, `parse/2` is a probabilistic CC parser, hence `Form` is a symbolic expression and training is performed by variants of EM. 
 
-A completely different approach is to develop a differentiable architecture, as in [1], and train end to end using SGD. Again, this approach may be worth pursuing in the context of Jianpeng Cheng's system [6] -- replacing the "Question RNN" in [1] with JP's semantic parser. 
+A completely different approach is to develop a differentiable architecture, as in [1], and train end to end using SGD. A key question here is the representation of the utterance. In [1] this is done with a "Question RNN" whose weights are updated during training, presumably leading to an application specific abstraction of the utterance being learnt. Jianpeng has developed an end-to-end differentiable system [6] (based on RNN grammars) which produces a semantic parse in two steps, first generating an "ungrounded" semantic representation, and second learning the grounded lexicon (mapping from natural language predicates to pre-fixed vocabulary of grounded predicates). It may be worth considering replacing the Question RNN with the RNN grammar based component of [6], and continuing to train end-to-end with SGD. 
 
-Yet another alternative is to use [4] as a semantic parser. But here the gap between the form output by the semantic parser and the form needed for execution will be significant, and will need to be bridged by a learner. 
+Yet another alternative is to use [4] as a semantic parser. But here the gap between the form output by the semantic parser and the form needed for execution will be significant, and will need to be bridged by a separate learner, akin to phase II of [6]. 
 
 
 # References
@@ -45,3 +45,4 @@ Yet another alternative is to use [4] as a semantic parser. But here the gap bet
 4. Siva Reddy, Oscar Täckström, Slav Petrov, Mark Steedman, Mirella Lapata. [Universal Semantic Parsing.](https://arxiv.org/abs/1702.03196)
 5. Teisuke Sato and Keiichi Kubota. [Viterbi training in PRISM](https://www.semanticscholar.org/paper/Viterbi-training-in-PRISM-Sato-Kubota/92756666eff7dbac73ceb4b8b398e4ae61f33d7f). TPLP, 2015, pp 147--168.
 6. Jianpeng Cheng, Siva Reddy, Vijay Saraswat and Mirella Lapata. Learning Structured Natural Language Representations for Semantic Parsing. ACL 2017
+7. Panupong Pasupat and Percy Liang. [Compositional Semantic Parsing on Semi-Structured Tables.](https://cs.stanford.edu/~pliang/papers/compositional-acl2015.pdf) ACL 2015.
