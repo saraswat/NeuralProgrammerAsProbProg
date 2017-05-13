@@ -16,7 +16,7 @@ result(Query, Table, Ans):- parse(Query, Form), eval(Form, Table, Ans).
 
 Note that `Form` does not occur in the head of the clause -- it is "latent". Training is performed on a bunch of ground ``result/3`` triples. At test time, `Query` and `Table` are instantiated, and `Ans` is unknown and computed by the program. We will use [Cussen's Failure Adjusted Maximisation (FAM) algorithm](http://link.springer.com/article/10.1023/A:1010924021315) (based on EM) for training. We will use the Viterbi algorithm in PRISM to compute the most probable solution. Both these techniques are implemented in [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/).
 
-_Q for Abu: Is your implemented system using techniques similar to PRISM's Viterbi training (see [5]) + generalized inside-out algorithm [see [2]), or are there different ideas? [5] contains a discussion of statistical parsing in this context._
+_Q for Abu: Is your implemented system using techniques similar to PRISM's Viterbi training (see [5]) + generalized inside-out algorithm [see [2]), or are there different ideas? [5] contains a discussion of statistical parsing in this context. Note that PRISM implements a number of other inferencing techniques, including Variational Bayes, that may be of interest here._
 
 Note that to help the training process it may make sense to augment the training set with some `parse/2` pairs, and some `eval/3` triples. It will be interesting to determine how overall performance improves with these augmentations. 
 
