@@ -89,23 +89,27 @@ proj: ColName -> Rows -> Values
 `proj(colname, r)` is written `colname(r)`. Returns the sequence of values obtained by selecting the value of `colname` for each row in `r`.
 
 ### Numeric operations
-``` +, -, *, /: Values -> Values -> Values```
+``` 
++, -, *, /: Values -> Values -> Values
++, -, *, /: Value -> Value -> Value
+```
+
+When applied to `Values`, the operators require that the two arguments have the same number of elements, the operator is applied to corresponding elements.
 
 ### Set operations
 ```
 either, both: Rows -> Rows -> Rows
+all: Rows
 ```
 `either(rs, qs)` contains the rows of `rs` and `qs` in the sequence in which they occur in the original table. (Example: `either(country(china, all), country(france, all))` is the collection of all rows in the table whose `country` column contains `china` or `france`.)
 
 `both(rs, qs)` contains rows that are in both `rs` and `qs`. (Example: `both(country(china, all), city(beijing, all))` is the collection of all rows in the table whose `country` column contains `china` and `city` column contains `beijing`.)
 
+`all` is the set of all rows. 
+
 ### Miscellaneous
 ```
-any(rows)    		      any one row in the set
-
-card(rows)		      number of rows
-
-all	      	 	      set of all rows
+card: Rows -> Value card(r) is the number of rows in r.
 ```
 
 # Examples
@@ -124,10 +128,6 @@ Here are some example questions and their translations.
   * _Which years have the most participating countries?_ `years(max(nations, all))`
   * _How many events were in Athens, Greece?_   `card(city(athens, all))`
   * _How many more participants were there in 1990 than in the first year?_  `nations(year(1990, all)) - nations(min(year, all))`
-  
-
-
-
   
 
 # References
