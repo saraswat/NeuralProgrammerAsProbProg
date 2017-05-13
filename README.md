@@ -1,4 +1,4 @@
-# NeuralProgrammerAsProbProg
+#  Neural Programmer as Probabilistic Programming, and other approaches
 Goal is to work with the examples in [Arvind Neelakantan's work](https://arxiv.org/abs/1611.08945) and understand how to use other semantic parsing techniques to improve performance. 
 
 One main line of attack is to use Probabilistic CC (and implement via translation to [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/)).  For now, we will approximate PCC with definite clauses that have a fixed (left to right) order of evaluation, and ensure that our programs are such that atoms `cond` used in a sample operator `X | cond ~ PD` are ground when executed.
