@@ -1,7 +1,7 @@
 #  Neural Programmer as Probabilistic Programming, and other approaches
 Goal is to work with the examples in [Arvind Neelakantan's work](https://arxiv.org/abs/1611.08945) and understand how to use other semantic parsing techniques to improve performance. 
 
-One main line of attack is to use Probabilistic CC (and implement via translation to [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/)).  For now, we will approximate PCC with definite clauses that have a fixed (left to right) order of evaluation, and ensure that our programs are such that atoms `cond` used in a sample operator `X | cond ~ PD` are ground when executed.
+One main line of attack is to use [Probabilistic CC](https://github.com/saraswat/pcc) (and implement via translation to [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/)).  For now, we will approximate PCC with definite clauses that have a fixed (left to right) order of evaluation, and ensure that our programs are such that atoms `cond` used in a sample operator `X | cond ~ PD` are ground when executed.
 
 The overall problem to be solved: Design a system that can take as input
   1. an utterance
@@ -47,3 +47,4 @@ This is also a good (but advanced example) for the "Differentiable Logic" projec
 5. Teisuke Sato and Keiichi Kubota. [Viterbi training in PRISM](https://www.semanticscholar.org/paper/Viterbi-training-in-PRISM-Sato-Kubota/92756666eff7dbac73ceb4b8b398e4ae61f33d7f). TPLP, 2015, pp 147--168.
 6. Jianpeng Cheng, Siva Reddy, Vijay Saraswat and Mirella Lapata. Learning Structured Natural Language Representations for Semantic Parsing. ACL 2017
 7. Panupong Pasupat and Percy Liang. [Compositional Semantic Parsing on Semi-Structured Tables.](https://cs.stanford.edu/~pliang/papers/compositional-acl2015.pdf) ACL 2015.
+8. Vijay Saraswat. [Probabilistic CCP (logic programming subset)](https://github.com/saraswat/pcc). In progress.
