@@ -8,7 +8,7 @@ The overall problem to be solved: Design a system that can take as input
   2. a table
 and compute an answer to the question in the utterance, using only the information in the table. The number of columns of the table and their header and row information can vary from question to question. Entries in the table (cells) may have numbers or multiple words. The training set available is a corpus `(x_i, t_i, a_i)_i` where `x_i` is the utterance, `t_i` a table and `a_i` is the answer. The program is latent. The corpus is described in [7]. Note that with 37% results, there is considerable room for improvement!
 
-The basic approach is to augment a probabilistic CCP semantic parser with an evaluator of the logical form.
+The basic approach is to augment a probabilistic CCP semantic parser `parse/2` with an evaluator of the logical form.
 ```prolog
 result(Query, Table, Ans):- parse(Query, Form), eval(Form, Table, Ans).
 ```
