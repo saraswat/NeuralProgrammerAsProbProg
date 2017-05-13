@@ -26,11 +26,11 @@ An advantage of this approach is a clean separation between parsing (understandi
 
 _Q: What is the analog of [Arvind's](https://arxiv.org/abs/1611.08945) "soft selection", during training for PCC?_
 
-##Complications
+## Complications
 
 Note the answer may be a number that occurs directly in the table. We will represent this by permitting the evaluator to be non-deterministic -- choose either the number in the table, or choose the computed answer -- and let the choice be conditioned by the logical form, and then letting training determine the probability distribution.
 
-##Other Approaches
+## Other Approaches
 In this approach, `parse/2` is a probabilistic CC parser, hence `Form` is a symbolic expression and training is performed by variants of EM. 
 
 A completely different approach is to develop a differentiable architecture, as in [1], and train end to end using SGD. A key question here is the representation of the utterance. In [1] this is done with a "Question RNN" whose weights are updated during training, presumably leading to an application specific abstraction of the utterance being learnt. Jianpeng has developed an end-to-end differentiable system [6] (based on RNN grammars) which produces a semantic parse in two steps, first generating an "ungrounded" semantic representation, and second learning the grounded lexicon (mapping from natural language predicates to pre-fixed vocabulary of grounded predicates). It may be worth considering replacing the Question RNN with the RNN grammar based component of [6], and continuing to train end-to-end with SGD. 
