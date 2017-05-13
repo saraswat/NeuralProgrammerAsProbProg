@@ -39,6 +39,97 @@ Yet another alternative is to use [4] as a semantic parser. But here the gap bet
 
 This is also a good (but advanced example) for the "Differentiable Logic" project. 
 
+# Initial cut at logical form
+The language of logical forms is the set of first order expressions obtained by using the operations given below. This is not dissimilar to the lambda-DCS language presented in [7].
+
+## Type system
+Given a table with many rows, and columns with colnames. Each row has an index. 
+  1. `Value`  -- an integer, boolean, date, ...
+  2. `Values` -- sets of integers, booleans, dates
+  3. `Rows`   -- subsequence of rows from given table
+  4. `Row`    -- a row from the given table
+  4. `ColName` -- names of columns in the given table
+
+## Operations
+
+### Selection
+```ap: ColName -> Value -> Rows -> Rows```
+
+`ap(colname, cellvalue, rows)` is written as `colname(cellvalue, rows)` Returns subsequence of all rows whose `colname` has value `cellvalue`.
+
+### Superlatives
+
+```max, min: ColName -> Rows -> Rows
+max(colname, rows)	      subsequence of rows with the highest cell values for colname
+min(colname, rows)	      subsequence of rows with the lowest cell values for colname
+```
+### Comparisons
+```
+op: Colname -> Value -> Rows -> Rows
+ge(colname, val, r): subsequence of rows in r whose colname cells have value >= val
+gt(...)
+le(...)
+lt(...)
+```
+
+### Navigation
+
+```
+prev, next: Rows -> Rows
+first: Rows -> Row
+```
+
+`prev(r)` (`next(r)`) returns the subsequence of rows obtained by taking the preceding (succeeding) row in the original table (if it exists) for each row in `r`. 
+
+### Projection
+```
+proj: ColName -> Rows -> Values
+```
+
+`proj(colname, r)` is written `colname(r)`. Returns the sequence of values obtained by selecting the value of `colname` for each row in `r`.
+
+### Numeric operations
+``` +, -, *, /: Values -> Values -> Values```
+
+### Set operations
+```
+either, both: Rows -> Rows -> Rows
+```
+`either(rs, qs)` contains the rows of `rs` and `qs` in the sequence in which they occur in the original table. (Example: `either(country(china, all), country(france, all))` is the collection of all rows in the table whose `country` column contains `china` or `france`.)
+
+`both(rs, qs)` contains rows that are in both `rs` and `qs`. (Example: `both(country(china, all), city(beijing, all))` is the collection of all rows in the table whose `country` column contains `china` and `city` column contains `beijing`.)
+
+### Miscellaneous
+```
+any(rows)    		      any one row in the set
+
+card(rows)		      number of rows
+
+all	      	 	      set of all rows
+```
+
+# Examples
+Consider a table given by:
+```
+Year	City	Country	Nations
+1896 	...
+1900	...
+...
+```
+
+Here are some example questions and their translations.
+
+  * _Greece held its last Summer Olympics in which year?_   `year(max(year, country(greece, all)))`
+  * _In which city's the first time with at least 20 nations?_ `city(min(year, atleast(nations, 20, all)))`
+  * _Which years have the most participating countries?_ `years(max(nations, all))`
+  * _How many events were in Athens, Greece?_   `card(city(athens, all))`
+  * _How many more participants were there in 1990 than in the first year?_  `nations(year(1990, all)) - nations(min(year, all))`
+  
+
+
+
+  
+
 # References
 1. Arvind Neelakantan, Quoc V. Le, Martin Abadi, Andrew McCallum, Dario Amode. [Learning a Natural Language Interface with Neural Programmer.](https://arxiv.org/abs/1606.04474) ICLR 2017.
 2. Taisuke Sato. [PRISM Manual.](rjida.meijo-u.ac.jp/prism/download/prism21.pdf)
