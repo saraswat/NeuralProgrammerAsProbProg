@@ -3,7 +3,9 @@
   Rows is of the form rows(row(V11,..., V1J), ..., row(VI1,...VIJ)).
 
   The subsequence of rows is represented as an increasing sequence of indices in 1..J,
-  indices([i1, ..., ik]).
+  indices([i1, ..., ik]). Hence, they qualify as sets, and operations such as intersection
+  can be used with them. (There is no particular reason to keep them sorted, seems this
+  will be of use later.)
   
 */
 
@@ -67,7 +69,7 @@ eval(either(R,S), Table, indices(Res)):-
 eval(both(R,S), Table, indices(Res)):- 
 	eval(R, Table, indices(IndR)),
 	eval(S, Table, indices(IndS)),
-	intersect(IndR, IndS, Res).
+	intersection(IndR, IndS, Res).
 
 eval(card(Rows), Table, val(R)):-
 	eval(Rows, Table, indices(Inds)),
@@ -101,7 +103,7 @@ eval(le(ColName, Cell, Rows), Table, indices(Res)):- comp(le, ColName, Cell, Row
 eval(lt(ColName, Cell, Rows), Table, indices(Res)):- comp(lt, ColName, Cell, Rows, Table, Res).
 eval(eq(ColName, Cell, Rows), Table, indices(Res)):- comp(eq, ColName, Cell, Rows, Table, Res).
 
-eval(proj(Colname, Rows), Table, Res):-
+eval(proj(ColName, Rows), Table, Res):-
 	eval(Rows, Table, indices(Inds)),
 	col(ColName, Table, J),
 	proj(J, Inds, Table, Res).
@@ -123,7 +125,7 @@ comp(Op, ColName, Cell, Rows, Table, Res):-
 	comp_1(Op, J, Cell, Inds, TRows, Res).
 
 % Support definitions
-row(I, table(ColNames, Rows), Row):- arg(I, Rows, Row).
+row(I, table(_ColNames, Rows), Row):- arg(I, Rows, Row).
 col(ColName, table(ColNames, _), J):- % J is the index of ColName.
 	functor(ColNames, _, K), 
 	col(ColName, 1, K, ColNames, J).
@@ -146,8 +148,8 @@ next_1([I|Inds], K, [I1|Res]):- I < K, I1 is I+1, next_1(Inds, K, Res).
 next_1([I|Inds], K, Res)     :- I >= K,           next_1(Inds, K, Res).
 
 prev([], []).
-prev([I|Inds], [I1|Res]):- I > 1, I1 is I-1, prev(Inds, K, Res).
-prev([I|Inds], Res)     :- I =< 1,           prev(Inds, K, Res).
+prev([I|Inds], [I1|Res]):- I > 1, I1 is I-1, prev(Inds, Res).
+prev([I|Inds], Res)     :- I =< 1,           prev(Inds, Res).
 
      
 comp_1(_Op, _J, _Cell, [], _TRows, []).
@@ -156,28 +158,28 @@ comp_1(Op, J, Cell, [I | Inds], TRows, Res):-
 	comp_cell(Op, Cell1, Cell, I, Res, Res1),
 	comp_1(Op, J, Cell, Inds, TRows, Res1).
 
-comp_cell(ge, Cell1, Cell, I, [I|Res1], Res1):- Cell1 >= Cell.
-comp_cell(ge, Cell1, Cell, I, Res,      Res) :- Cell1 < Cell.
-comp_cell(gt, Cell1, Cell, I, [I|Res1], Res1):- Cell1 > Cell.
-comp_cell(gt, Cell1, Cell, I, Res,      Res) :- Cell1 =< Cell.
-comp_cell(le, Cell1, Cell, I, [I|Res1], Res1):- Cell1 =< Cell.
-comp_cell(le, Cell1, Cell, I, Res,      Res) :- Cell1 > Cell.
-comp_cell(lt, Cell1, Cell, I, [I|Res1], Res1):- Cell1 < Cell.
-comp_cell(lt, Cell1, Cell, I, Res,      Res) :- Cell1 >= Cell.
-comp_cell(eq, Cell1, Cell, I, [I|Res1], Res1):- Cell1 == Cell.
-comp_cell(eq, Cell1, Cell, I, Res,      Res) :- Cell1 \== Cell.
+comp_cell(ge, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 >= Cell.
+comp_cell(ge, Cell1, Cell, _I, Res,      Res) :- Cell1 < Cell.
+comp_cell(gt, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 > Cell.
+comp_cell(gt, Cell1, Cell, _I, Res,      Res) :- Cell1 =< Cell.
+comp_cell(le, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 =< Cell.
+comp_cell(le, Cell1, Cell, _I, Res,      Res) :- Cell1 > Cell.
+comp_cell(lt, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 < Cell.
+comp_cell(lt, Cell1, Cell, _I, Res,      Res) :- Cell1 >= Cell.
+comp_cell(eq, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 == Cell.
+comp_cell(eq, Cell1, Cell, _I, Res,      Res) :- Cell1 \== Cell.
 
 
 extrema(Op, J, [I | Inds], table(_, TRows), Res):-
 	cell(I, J, TRows, Cell), 
 	extrema(Op, J, Inds, Cell-[I], TRows, Res).
 
-extrema_cell(max, Cell1, Cell, I, _Is, Cell1-[I])  :- Cell1 > Cell.
-extrema_cell(max, Cell1, Cell, I, Is, Cell-[I|Is]) :- Cell1 == Cell.
-extrema_cell(max, Cell1, Cell, I, Is, Cell-Is)     :- Cell1 < Cell.
-extrema_cell(min, Cell1, Cell, I, Is, Cell-Is)     :- Cell1 > Cell.
-extrema_cell(min, Cell1, Cell, I, Is, Cell-[I|Is]]):- Cell1 == Cell.
-extrema_cell(min, Cell1, Cell, I, Is, Cell1-[I])   :- Cell1 < Cell.
+extrema_cell(max, Cell1, Cell, I, _Is, Cell1-[I])   :- Cell1 > Cell.
+extrema_cell(max, Cell1, Cell, I,  Is, Cell-[I|Is]) :- Cell1 == Cell.
+extrema_cell(max, Cell1, Cell, _I, Is, Cell-Is)     :- Cell1 < Cell.
+extrema_cell(min, Cell1, Cell, _I, Is, Cell-Is)     :- Cell1 > Cell.
+extrema_cell(min, Cell1, Cell, I,  Is, Cell-[I|Is]) :- Cell1 == Cell.
+extrema_cell(min, Cell1, Cell, I, _Is, Cell1-[I])   :- Cell1 < Cell.
 
 
 extrema(_Op, _J, [], _Cell-Maxes, _TRows, Maxes).
