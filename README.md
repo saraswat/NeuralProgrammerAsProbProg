@@ -52,24 +52,24 @@ Given a table with many rows, and columns with colnames. Each row has an index.
 
 ## Operations
 
-### Selection
-```ap: ColName -> Value -> Rows -> Rows```
+### Comparison-based selection
+```
+op: Colname -> Value -> Rows -> Rows
+ge(colname, val, r): subsequence of rows in r whose colname cells have value >= val
+gt(colname, val, r)
+le(colname, val, r)
+lt(colname, val, r)
+eq(colname, val, r)
+```
+Return the subsequence of rows from `r` in which the value of the cell at `colname` has the given relationship to `val`.
 
-`ap(colname, cellvalue, rows)` is written as `colname(cellvalue, rows)` Returns subsequence of all rows whose `colname` has value `cellvalue`.
+`eq(colname, val, r)` is written as `colname(cellvalue, rows)`. 
 
 ### Superlatives
 
 ```max, min: ColName -> Rows -> Rows
 max(colname, rows)	      subsequence of rows with the highest cell values for colname
 min(colname, rows)	      subsequence of rows with the lowest cell values for colname
-```
-### Comparisons
-```
-op: Colname -> Value -> Rows -> Rows
-ge(colname, val, r): subsequence of rows in r whose colname cells have value >= val
-gt(...)
-le(...)
-lt(...)
 ```
 
 ### Navigation
@@ -86,7 +86,7 @@ first: Rows -> Row
 proj: ColName -> Rows -> Values
 ```
 
-`proj(colname, r)` is written `colname(r)`. Returns the sequence of values obtained by selecting the value of `colname` for each row in `r`.
+`proj(colname, r)` is written `colname(r)`. Returns the sequence of _values_ obtained by selecting the value of `colname` for each row in `r`.
 
 ### Numeric operations
 ``` 
