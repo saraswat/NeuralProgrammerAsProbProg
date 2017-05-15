@@ -54,9 +54,9 @@ Given a table with many rows, and columns with colnames. Each row has an index.
   1. `Value`  -- an integer, boolean, date, ...
   2. `Values` -- sets of integers, booleans, dates
   3. `Rows`   -- subsequence of rows from given table
-  4. `Row`    -- a row from the given table
   4. `ColName` -- names of columns in the given table
 
+No operations are available on the type `ColName`. Therefore the only terms of this type are constants.
 ## Operations
 
 ### Comparison-based selection
@@ -68,7 +68,7 @@ le(colname, val, r)
 lt(colname, val, r)
 eq(colname, val, r)
 ```
-Return the subsequence of rows from `r` in which the value of the cell at `colname` has the given relationship to `val`.
+Return the subsequence of rows from `r` in which the value of the cell at `colname` has the given relationship to `val`. `colname`, `val` and `r` are evaluated in turn.  `val` must evaluate to a singleton value; for this operations such as `first` or `last` may be used, perhaps together with `proj`. (See examples in the table below.)
 
 `eq(colname, val, r)` is written as `colname(cellvalue, rows)`. 
 
@@ -105,14 +105,13 @@ When applied to `Values`, the operators require that the two arguments have the 
 
 ### Set operations
 ```
-either, both: Rows -> Rows -> Rows
 all: Rows
+either: Rows -> Rows -> Rows
 ```
-`either(rs, qs)` contains the rows of `rs` and `qs` in the sequence in which they occur in the original table. (Example: `either(country(china, all), country(france, all))` is the collection of all rows in the table whose `country` column contains `china` or `france`.)
-
-`both(rs, qs)` contains rows that are in both `rs` and `qs`. (Example: `both(country(china, all), city(beijing, all))` is the collection of all rows in the table whose `country` column contains `china` and `city` column contains `beijing`.)
-
 `all` is the set of all rows. 
+
+`either(rs, qs)` contains the rows of `rs` and `qs` in the sequence in which they occur in the original table. (Example: `either(country(china, all), country(france, all))` is the collection of all rows in the table whose `country` column contains `china` or `france`.)
+Note that `both(rs, qs)` should not be needed. (It contains rows that are in both `rs` and `qs`. Example: `both(country(china, all), city(beijing, all))` is the collection of all rows in the table whose `country` column contains `china` and `city` column contains `beijing`. It can also be expressed as `country(china, city(beijing, all))`.)
 
 ### Miscellaneous
 ```
