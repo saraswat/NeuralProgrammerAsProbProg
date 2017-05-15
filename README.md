@@ -76,10 +76,10 @@ min(colname, rows)	      subsequence of rows with the lowest cell values for col
 
 ```
 prev, next: Rows -> Rows
-first: Rows -> Row
+first,last: Rows -> Row
 ```
 
-`prev(r)` (`next(r)`) returns the subsequence of rows obtained by taking the preceding (succeeding) row in the original table (if it exists) for each row in `r`. `first(r)` returns the first row in `r`. 
+`prev(r)` (`next(r)`) returns the subsequence of rows obtained by taking the preceding (succeeding) row in the original table (if it exists) for each row in `r`. `first(r)` (`last(r)`) returns the first (last) row in `r`. 
 
 ### Projection
 ```
