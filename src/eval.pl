@@ -13,52 +13,53 @@
 
 %% Type checking formulas
 % formula(F, T) holds if F is a legal formula, given table T
-formula(Form, Table):- formula_values(Form, Table).
-formula(Form,_Table):- formula_value(Form).
-formula(Form, Table):- formula_rows(Form, Table).
-formula(Form, Table):- formula_row(Form, Table).
+form(Form, Table):- form_values(Form, Table).
+form(Form, Table):- form_value(Form, Table).
+form(Form, Table):- form_rows(Form, Table).
 
-formula_colName(Col, table(ColNames, _)):- member(Col, ColNames).
-formula_rows(all, _Table).
-formula_rows(either(R,S), Table)        :- formula_rows(R, Table),      formula_rows(S,    Table).
-formula_rows(both(R, S), Table)         :- formula_rows(R, Table),      formula_rows(S,    Table).
-formula_rows(ge(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(gt(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(le(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(lt(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(eq(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(max(Col, Rows),      Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(min(Col, Rows),      Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_rows(prev(Rows),          Table):-                              formula_rows(Rows, Table).
-formula_rows(next(Rows),          Table):-                              formula_rows(Rows, Table).
 
-formula_values(proj(Col, Rows),   Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
-formula_values(L+R,               Table):- formula_values(L, Table), formula_values(R, Table).
-formula_values(L-R,               Table):- formula_values(L, Table), formula_values(R, Table).
-formula_values(L/R,               Table):- formula_values(L, Table), formula_values(R, Table).
-formula_values(L*R,               Table):- formula_values(L, Table), formula_values(R, Table).
-formula_values(card(Rows),        Table):- formula_rows(Rows, Table).
+form_col(Col, table(ColNames, _)):- member(Col, ColNames).
+form_rows(all, _Table).
+form_rows(either(R,S), Table)       :- form_rows(R, Table),  form_rows(S,    Table).
+form_rows(both(R, S), Table)        :- form_rows(R, Table),  form_rows(S,    Table).
+form_rows(ge(Col, Val, Rows), Table):- form_col(Col, Table), form_rows(Rows, Table), form_value(Val, Table).
+form_rows(gt(Col, Val, Rows), Table):- form_col(Col, Table), form_rows(Rows, Table), form_value(Val, Table).
+form_rows(le(Col, Val, Rows), Table):- form_col(Col, Table), form_rows(Rows, Table), form_value(Val, Table).
+form_rows(lt(Col, Val, Rows), Table):- form_col(Col, Table), form_rows(Rows, Table), form_value(Val, Table).
+form_rows(eq(Col, Val, Rows), Table):- form_col(Col, Table), form_rows(Rows, Table), form_value(Val, Table).
+form_rows(max(Col, Rows),     Table):- form_col(Col, Table), form_rows(Rows, Table).
+form_rows(min(Col, Rows),     Table):- form_col(Col, Table), form_rows(Rows, Table).
+form_rows(prev(Rows),         Table):-                       form_rows(Rows, Table).
+form_rows(next(Rows),         Table):-                       form_rows(Rows, Table).
+form_rows(first(Rows),        Table):- form_rows(Rows, Table).
+form_rows(last(Rows),         Table):- form_rows(Rows, Table).
+
+form_values(proj(Col, Rows),   Table):- form_col(Col, Table),  form_rows(Rows, Table).
+form_values(L+R,               Table):- form_values(L, Table), form_values(R, Table).
+form_values(L-R,               Table):- form_values(L, Table), form_values(R, Table).
+form_values(L/R,               Table):- form_values(L, Table), form_values(R, Table).
+form_values(L*R,               Table):- form_values(L, Table), form_values(R, Table).
+form_values(card(Rows),        Table):- form_rows(Rows, Table).
 	
-formula_row(first(Rows),          Table):- formula_rows(Rows, Table).
-formula_row(last(Rows),           Table):- formula_rows(Rows, Table).
-
-formula_value(X):- number(X).
-formula_value(X):- string(X).
-formula_value(Date):- (functor(Date, date, N), (N==9; N==3)); functor(Date, time, 3).
-formula_value([]).
-formula_value([X | Xs]):- formula_value(X), formula_value(Xs).
 
 
-%% evaluating formulas:
+form_value(X, _Table)       :- base_value(X).
+form_value(X, Table)        :- form_values(X, Table). % maybe at runtime we will get a singleton value.
+
+base_value(X)       :- atomic(X).
+base_value(Date)    :- (functor(Date, date, N), (N==9; N==3)); functor(Date, time, 3).
+base_value([X | Xs]):- form_value(X), form_value(Xs).
+
+%% evaluating forms:
 % eval_top(Form, Table, Res):- evaluate Form with Table to produce Res, type-checking first.
 % eval(Form, Table, Res):- evaluate Form with Table to produce Res.
 
-eval_top(Form, Table, Res):- once(formula(Form, Table)), eval(Form, Table, Res).
+eval_top(Form, Table, Res):- once(form(Form, Table)), eval(Form, Table, Res).
 
 % Base case -- normalized indices, values.
 eval(indices(L), _Table, indices(L)).
 eval(val(X),     _Table, val(X)).
-eval(X,          _Table, val(X)):- once(formula_value(X)).
+eval(X,          _Table, val(X)):- base_value(X).
 
 % 
 eval(all, Table, indices(Res)):- all_rows(Table, Res).
@@ -68,6 +69,7 @@ eval(either(R,S), Table, indices(Res)):-
 	append(IndR, IndS, Ind),
 	sort(Ind, Res).
 
+% probably both is not needed. One can do a CPS embedding of R in S.
 eval(both(R,S), Table, indices(Res)):- 
 	eval(R, Table, indices(IndR)),
 	eval(S, Table, indices(IndS)),
@@ -79,44 +81,46 @@ eval(last(Rows),  Table, indices([Row])):- eval(Rows, Table, indices(Ind)),  las
 eval(next(Rows),  Table, indices(Res))  :- eval(Rows, Table, indices(Inds)), next(Inds, Table, Res).
 eval(prev(Rows),  Table, indices(Res))  :- eval(Rows, Table, indices(Inds)), prev(Inds, Res).
 
-eval(max(ColName, Rows), Table, indices(Res)):-
-	eval(Rows, Table, indices(Inds)),
-	col(ColName, Table, J),
-	extrema(max, J, Inds, Table, Res).
+eval(max(Col, Rows), Table, indices(Res)):- e_extrema(max, Col, Rows, Table, Res).
+eval(min(Col, Rows), Table, indices(Res)):- e_extrema(min, Col, Rows, Table, Res).
 
-eval(min(ColName, Rows), Table, indices(Res)):-
-	eval(Rows, Table, indices(Inds)),
-	col(ColName, Table, J),
-	extrema(min, J, Inds, Table, Res).
-
-eval(ge(ColName, Cell, Rows), Table, indices(Res)):- comp(ge, ColName, Cell, Rows, Table, Res).
-eval(gt(ColName, Cell, Rows), Table, indices(Res)):- comp(gt, ColName, Cell, Rows, Table, Res).
-eval(le(ColName, Cell, Rows), Table, indices(Res)):- comp(le, ColName, Cell, Rows, Table, Res).
-eval(lt(ColName, Cell, Rows), Table, indices(Res)):- comp(lt, ColName, Cell, Rows, Table, Res).
-eval(eq(ColName, Cell, Rows), Table, indices(Res)):- comp(eq, ColName, Cell, Rows, Table, Res).
+eval(ge(ColName, Cell, Rows), Table, indices(Res)):- e_comp(ge, ColName, Cell, Rows, Table, Res).
+eval(gt(ColName, Cell, Rows), Table, indices(Res)):- e_comp(gt, ColName, Cell, Rows, Table, Res).
+eval(le(ColName, Cell, Rows), Table, indices(Res)):- e_comp(le, ColName, Cell, Rows, Table, Res).
+eval(lt(ColName, Cell, Rows), Table, indices(Res)):- e_comp(lt, ColName, Cell, Rows, Table, Res).
+eval(eq(ColName, Cell, Rows), Table, indices(Res)):- e_comp(eq, ColName, Cell, Rows, Table, Res).
 
 eval(proj(ColName, Rows), Table, val(Res)):-
 	eval(Rows, Table, indices(Inds)),
 	col(ColName, Table, J),
 	proj(J, Inds, Table, Res).
 
-eval(V+W, Table, val(Res)):- valop(plus, V, W, Table, Res).
-eval(V*W, Table, val(Res)):- valop(mult, V, W, Table, Res).
-eval(V/W, Table, val(Res)):- valop(divide, V, W, Table, Res).
-eval(V-W, Table, val(Res)):- valop(minus, V, W, Table, Res).
+eval(V+W, Table, val(Res)):- e_valop(plus, V, W, Table, Res).
+eval(V*W, Table, val(Res)):- e_valop(mult, V, W, Table, Res).
+eval(V/W, Table, val(Res)):- e_valop(divide, V, W, Table, Res).
+eval(V-W, Table, val(Res)):- e_valop(minus, V, W, Table, Res).
 
-valop(Op, L, R, Table, Res):-
+e_extrema(Op, ColName, Rows, Table, Res):-
+	eval(Rows, Table, indices(Inds)),
+	col(ColName, Table, J),
+	extrema(Op, J, Inds, Table, Res).
+
+e_valop(Op, L, R, Table, Res):-
 	eval(L, Table, val(L1)),
 	eval(R, Table, val(R1)),
 	valop(Op, L1, R1, Res).
 	
-comp(Op, ColName, Cell, Rows, Table, Res):-
+e_comp(Op, ColName, CellForm, Rows, Table, Res):-
+	eval(CellForm, Table, Vals), single_value(Vals, Cell), 
 	eval(Rows, Table, indices(Inds)),
 	col(ColName, Table, J),
 	Table = table(_, TRows), 
 	comp_1(Op, J, Cell, Inds, TRows, Res).
 
-% Support definitions
+				% Support definitions
+single_value(val([X]), X).
+single_value(val(X), X):- atomic(X).
+
 row(I, table(_ColNames, Rows), Row):- arg(I, Rows, Row).
 col(ColName, table(ColNames, _), J)  :- 	                  col(ColName, 1, ColNames, J).
 col(ColName, I, [ColName | _Rest], I).
