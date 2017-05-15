@@ -150,14 +150,14 @@ comp_1(Op, J, Cell, [I | Inds], TRows, Res):-
 	comp_1(Op, J, Cell, Inds, TRows, Res1).
 
 comp_cell(ge, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 >= Cell.
-comp_cell(ge, Cell1, Cell, _I, Res,      Res) :- Cell1 < Cell.
 comp_cell(gt, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 > Cell.
-comp_cell(gt, Cell1, Cell, _I, Res,      Res) :- Cell1 =< Cell.
 comp_cell(le, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 =< Cell.
-comp_cell(le, Cell1, Cell, _I, Res,      Res) :- Cell1 > Cell.
 comp_cell(lt, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 < Cell.
-comp_cell(lt, Cell1, Cell, _I, Res,      Res) :- Cell1 >= Cell.
 comp_cell(eq, Cell1, Cell, I,  [I|Res1], Res1):- Cell1 == Cell.
+comp_cell(ge, Cell1, Cell, _I, Res,      Res) :- Cell1 < Cell.
+comp_cell(gt, Cell1, Cell, _I, Res,      Res) :- Cell1 =< Cell.
+comp_cell(le, Cell1, Cell, _I, Res,      Res) :- Cell1 > Cell.
+comp_cell(lt, Cell1, Cell, _I, Res,      Res) :- Cell1 >= Cell.
 comp_cell(eq, Cell1, Cell, _I, Res,      Res) :- Cell1 \== Cell.
 
 
