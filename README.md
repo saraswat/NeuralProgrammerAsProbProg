@@ -3,10 +3,8 @@ Goal is to work with the examples in [Arvind Neelakantan's work](https://arxiv.o
 
 One main line of attack is to use [Probabilistic CC](https://github.com/saraswat/pcc) (and implement via translation to [PRISM](http://rjida.meijo-u.ac.jp/sato-www/prism/)).  For now, we will approximate PCC with definite clauses that have a fixed (left to right) order of evaluation, and ensure that our programs are such that atoms `cond` used in a sample operator `X | cond ~ PD` are ground when executed.
 
-The overall problem to be solved: Design a system that can take as input
-  1. an utterance
-  2. a table
-and compute an answer to the question in the utterance, using only the information in the table. The number of columns of the table and their header and row information can vary from question to question. Entries in the table (cells) may have numbers or multiple words. The training set available is a corpus `(x_i, t_i, a_i)_i` where `x_i` is the utterance, `t_i` a table and `a_i` is the answer. The program is latent. The corpus is described in [7]. Note that with 37% results, there is considerable room for improvement!
+The overall problem to be solved: Design a system that can take as input an utterance and a table
+and computes an answer to the question in the utterance, using only the information in the table. The number of columns of the table and their header and row information can vary from question to question. Entries in the table (cells) may have numbers or multiple words. The training set available is a corpus `(x_i, t_i, a_i)_i` where `x_i` is the utterance, `t_i` a table and `a_i` is the answer. The program is latent. The corpus is described in [7]. Note that with 37% results, there is considerable room for improvement!
 
 The basic approach is to augment a probabilistic CCP semantic parser `parse/2` with an evaluator of the logical form.
 ```prolog
@@ -18,11 +16,20 @@ Note that `Form` does not occur in the head of the clause -- it is "latent". Tra
 
 _Q for Abu: Is your implemented system using techniques similar to PRISM's Viterbi training (see [5]) + generalized inside-out algorithm [see [2]), or are there different ideas? [5] contains a discussion of statistical parsing in this context. Note that PRISM implements a number of other inferencing techniques, including Variational Bayes, that may be of interest here._
 
-Note that to help the training process it may make sense to augment the training set with some `parse/2` pairs, and some `eval/3` triples. It will be interesting to determine how overall performance improves with these augmentations. 
+The key to this approach is the design of the logical form. The language of logical forms should be _expressive_ -- rich enough to express all functions from columns to values that can be specified by users in an utterance. It should attempt to be _orthogonal_ in that given a set of column names, and a function from tables with those column names to values, the number of programs in the language that express that function is very small, preferrably one. 
 
-The key to this approach is the design of the logical form. One idea is to work with Arvind's formalization of the programming model. This will give us some experience on the basis of which we can figure out if another programming model may make more sense. 
+A design in the variable-free "FunQL" style is given below. For this language, `eval(Form, Table, ?)` is determinate -- given a `Form` and a `Table`, the query will produce at most one answer determinately. 
 
-An advantage of this approach is a clean separation between parsing (understanding the nuances of the natural language utterance and generating the logical form) and evaluation (using information in the logical form to obtain an answer, given the table). The critical learning problem is going to be whether the information gleaned from the input can provide strong guidance on the probabilities. This is the central problem probabilistic parsers solve -- the key question here is whether the search implicit in the determination of `Form` for a given `(Query, Table, Ans)` triple is tractable. Perhaps it will be important to go to a true CCP context, with parallel execution of `parse(Query, Form)` and `eval(Form, Table, Ans)` agents, so that partial `Form`s that could not possibly lead to the right `Ans` fail early. 
+The key to this problem is developing a trainable semantic parser for the given utterance and logical language. Any parser can be used to solve the problem provided that it can generate a small ordered set of candidate parses that contains the "correct" parse, and improve its performance with feedback (generating fewer parses, including the correct parse). Since the input language is conversational (rather than formal), the parser has to exhibit some flexibility in word order. It will also need to be exhibit some genericity with respect to its lexicon because column names will be known only at runtime (may never have been seen during training). 
+
+Parsers such as Li Dong's sequence to sequence parsers are not directly applicable since they need the semantic form for training, and cannot generate a set of candidate logic forms. _But perhaps they can be modified?_
+
+Probabilistic semantic parsers that permit productions to be generated on the fly during training, and that can adjust probabilities during training should be good candidates. 
+
+Note that to help the training process it may make sense to augment the training set with some `parse/2` pairs and some `eval/3` triples (if `eval/3` is probabilistic). It will be interesting to determine how overall performance improves with these augmentations. 
+
+An advantage of this approach is a clean separation between parsing (understanding the nuances of the natural language utterance and generating the logical form) and evaluation (using information in the logical form to obtain an answer, given the table). Note that it may be interesting to run `parse/2` and `eval/3` in parallel, so that feedback from `eval/3` can be used to reject a partial parse (fail early). 
+
 
 _Q: What is the analog of [Arvind's](https://arxiv.org/abs/1611.08945) "soft selection", during training for PCC?_
 
@@ -113,21 +120,34 @@ card: Rows -> Value card(r) is the number of rows in r.
 ```
 
 # Examples
-Consider a table given by:
-```
-Year	City	Country	Nations
-1896 	...
-1900	...
-...
-```
+Consider [a table](https://en.wikipedia.org/wiki/List_of_Olympic_Games_host_cities) given by:
+
+|Year	|City |	Country	| Nations |
+| --- | --- | --- | --- |
+| 1896 | athens | greece | 14 |
+| 1900	| paris | france | 24 |
+| 1904  | 'st louis' | usa | 12 |
+ | ... | ... | ... | ... |
+| 2004 | athens | greece | 201 |
+| 2008 | beijing | china | 204 |
+| 2012 | london | uk | 204 |
+
+
 
 Here are some example questions and their translations.
 
-  * _Greece held its last Summer Olympics in which year?_   `year(max(year, country(greece, all)))`
-  * _In which city's the first time with at least 20 nations?_ `city(min(year, atleast(nations, 20, all)))`
-  * _Which years have the most participating countries?_ `years(max(nations, all))`
-  * _How many events were in Athens, Greece?_   `card(city(athens, all))`
-  * _How many more participants were there in 1990 than in the first year?_  `nations(year(1990, all)) - nations(min(year, all))`
+| Utterance | Form |
+| --------- | ---- |
+| _Events in Athens_ | `city(athens, all)`|
+| _Events in Athens or Beijing_ | `either(city(athens, all), city(beijing, all))`|
+| _Events in Athens before 1990_ | `lt(year, 1990, city(athens, all))`|
+| _How many events were in Athens, Greece?_   | `card(city(athens, all))` |
+| _Events in the same country as Athens_ | `country(country(first(city(athens, all))), all)` | 
+| _Greece held its last Summer Olympics in which year?_   | `year(max(year, country(greece, all)))` |
+| _In which city's the first time with at least 20 nations?_ | `city(min(year, atleast(nations, 20, all)))` |
+|  _Which years have the most participating countries?_ | `years(max(nations, all))` |
+|  _How many more participants were there in 1990 than in the first year?_  | `nations(year(1990, all)) - nations(min(year, all))` |
+
   
 
 # References
