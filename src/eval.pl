@@ -20,8 +20,8 @@ formula(Form, Table):- formula_row(Form, Table).
 
 formula_colName(Col, table(ColNames, _)):- member(Col, ColNames).
 formula_rows(all, _Table).
-formula_rows(either(R,S), Table)       :- formula_rows(R, Table),       formula_rows(S, Table).
-formula_rows(both(R, S), Table)        :- formula_rows(R, Table),       formula_rows(S, Table).
+formula_rows(either(R,S), Table)        :- formula_rows(R, Table),      formula_rows(S,    Table).
+formula_rows(both(R, S), Table)         :- formula_rows(R, Table),      formula_rows(S,    Table).
 formula_rows(ge(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
 formula_rows(gt(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
 formula_rows(le(Col, _Val, Rows), Table):- formula_colName(Col, Table), formula_rows(Rows, Table).
@@ -40,6 +40,7 @@ formula_values(L*R,               Table):- formula_values(L, Table), formula_val
 formula_values(card(Rows),        Table):- formula_rows(Rows, Table).
 	
 formula_row(first(Rows),          Table):- formula_rows(Rows, Table).
+formula_row(last(Rows),           Table):- formula_rows(Rows, Table).
 
 formula_value(X):- number(X).
 formula_value(X):- string(X).
@@ -74,6 +75,7 @@ eval(both(R,S), Table, indices(Res)):-
 
 eval(card(Rows),  Table, val(R))        :- eval(Rows, Table, indices(Inds)), length(Inds, R).
 eval(first(Rows), Table, indices([Row])):- eval(Rows, Table, indices([Row|_])).
+eval(last(Rows),  Table, indices([Row])):- eval(Rows, Table, indices(Ind)),  last(Ind, Row).
 eval(next(Rows),  Table, indices(Res))  :- eval(Rows, Table, indices(Inds)), next(Inds, Table, Res).
 eval(prev(Rows),  Table, indices(Res))  :- eval(Rows, Table, indices(Inds)), prev(Inds, Res).
 
