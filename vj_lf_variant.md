@@ -25,3 +25,25 @@ _linear  patterns_ (see Dale Miller et al's work); these can be implemented with
 
 (This we eschew the prescriptive design of Abu's LF in favior of the more traditional declarative design, as in LFG / CCG etc.)
 
+## Grammar
+
+```
+DP nonterminal {has_function_not, first_predicate, second_predicate} {1000.0, 0.1, 10000.0, 1.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+
+DP:X -> ALL OF DP:X     #DP -> ALL:null OF:null DP:identity
+DP:X -> DEFINITE NP:X   #DP -> DEFINITE:null NP:identity
+DP:X -> A NP:X          #DP -> A:null NP:identity
+DP:X -> AT_LEAST A NP:X #DP -> AT_LEAST:null A:null NP:identity
+DP:X -> ANY NP:X        #DP -> ANY:null NP:identity
+DP:X -> SOME NP:X       # DP -> SOME:null NP:identity
+DP:not@X -> NO NP:X     #DP -> NO:null NP:delete_not
+DP:X -> NP:X            #DP -> NP:identity
+
+DP: x\OP(L@x, R@x) -> DP:L CNJ:K DP:R #DP:select_left_disjoint CNJ:null DP:delete_left_disjoint
+
+#DP -> DP:select_left2_disjoint CNJ:null DP:delete_left2_disjoint
+DP -> DP:select_left2_disjoint CNJ:null DP:delete_left2_disjoint
+
+#DP -> DP:select_left_delete_head_disjoint CNJ:null DP:delete_left_disjoint
+DP -> DP:select_left2_disjoint CNJ:null DP:delete_left2_disjoint
+```
