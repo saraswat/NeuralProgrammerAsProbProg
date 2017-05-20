@@ -4,9 +4,18 @@ Basic idea is to stack with using pure lambda terms as semantic forms, and see i
 (Hopefully this setting is simple enough we don't need to go to glue.)
 
 ```
-(Lambda terms) M ::= c | x | M@M | x\M
+(Lambda terms) M ::= c | x | M(M) | M(M,M) | M(M,M,M) | x\M
 ```
- 
+(This differs from the usual presentation in that we explicit draw out two argument and three argument applications.
+Reduction rules are appropriately modified:
+
+```
+x\M (N)         --> M[N/x]
+x\y\M (N,P)     --> M[N/x,P/y]
+x\y\z\M (N,P,Q) --> M[N/x,P/y,Q/z]
+```
+)
+
 Productions will be declared in the form:
 ``
 NT: M1 --> RHS
@@ -39,7 +48,7 @@ DP:X -> SOME NP:X       # DP -> SOME:null NP:identity
 DP:not@X -> NO NP:X     #DP -> NO:null NP:delete_not
 DP:X -> NP:X            #DP -> NP:identity
 
-DP: x\OP(L@x, R@x) -> DP:L CNJ:K DP:R #DP:select_left_disjoint CNJ:null DP:delete_left_disjoint
+DP: x\K(L@x, R@x) -> DP:L CNJ:K DP:R #DP:select_left_disjoint CNJ:null DP:delete_left_disjoint
 
 #DP -> DP:select_left2_disjoint CNJ:null DP:delete_left2_disjoint
 DP -> DP:select_left2_disjoint CNJ:null DP:delete_left2_disjoint
