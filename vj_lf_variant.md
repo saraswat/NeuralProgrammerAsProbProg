@@ -3,6 +3,8 @@
 Basic idea is to stack with using pure lambda terms as semantic forms, and see if we can make this work. 
 (Hopefully this setting is simple enough we don't need to go to glue.)
 
+See [GlueCHR](https://github.com/saraswat/GlueCHR) for an implementation of Glue in Prolog.
+
 ```
 (Lambda terms) M ::= c | x | M(M) | M(M,M) | M(M,M,M) | x\M
 ```
