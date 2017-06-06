@@ -74,7 +74,8 @@ Return the subsequence of rows from `r` in which the value of the cell at `colna
 
 ### Superlatives
 
-```max, min: ColName -> Rows -> Rows
+```
+max, min: ColName -> Rows -> Rows
 max(colname, rows)	      subsequence of rows with the highest cell values for colname
 min(colname, rows)	      subsequence of rows with the lowest cell values for colname
 ```
