@@ -11,29 +11,9 @@
 
 :- use_module(library(lists)).
 
-
-% Table is a processed table, of the form table(ColNames, RowList, Numbers, Dates).
-
-colNames(table(X, _, _, _), X).
-rowList(table(_, X, _, _), X).
-numbers(table(_, _, X, _), X).
-dates(table(_, _, _, X), X).
-
-processed_table(itable(ColNames, Data), table(ColNames, Data, Numbers, Dates)):-
-	get_dates(Data, Dates),
-	get_nums(Data, Nums-[]),
-	list_to_set(Nums, Numbers).
-
-get_dates(_L, []). % TODO: extract dates from tables.
-get_nums([], X-X).
-get_nums([Row | Rows], X-Z):-
-	Row =..[_Functor | Args],
-	nums_rows(Args, X-Y),
-	get_nums(Rows, Y-Z).
-
-nums_rows([], X-X).
-nums_rows([A|R], [A|X]-Y):- number(A), nums_rows(R, X-Y).
-nums_rows([A|R], X-Y)    :- \+ number(A), nums_rows(R, X-Y).
+% Top-level entry points:
+gen_solutions(S, Depth, T, N):-
+	setof(sol(Form, X), (form_values(Form, Depth, T), eval(Form, T, val(X))), S), length(S, N).
 
 %% Type checking formulas
 % formula(F, T) holds if F is a legal formula, given table T
@@ -47,6 +27,34 @@ form(Form, Depth, T):- form_values(Form, Depth, T).
 form(Form, Depth, T):- form_value(Form, Depth, T).
 form(Form, Depth, T):- form_rows(Form, Depth, T).
 
+processed_table(itable(ColNames, Data), table(ColNames, Data, Numbers, Dates)):-
+	get_dates(Data, Dates),
+	get_nums(Data, Nums-[]),
+	list_to_set(Nums, Numbers).
+
+% eval_top(Form, Table, Res):- evaluate Form with Table to produce Res, type-checking first.
+% eval(Form, Table, Res):- evaluate Form with Table to produce Res.
+
+eval_top(Form, Table, Res):- once(form(Form, Table)), eval(Form, Table, Res).
+
+
+% Table is a processed table, of the form table(ColNames, RowList, Numbers, Dates).
+
+colNames(table(X, _, _, _), X).
+rowList(table(_, X, _, _), X).
+numbers(table(_, _, X, _), X).
+dates(table(_, _, _, X), X).
+
+get_dates(_L, []). % TODO: extract dates from tables.
+get_nums([], X-X).
+get_nums([Row | Rows], X-Z):-
+	Row =..[_Functor | Args],
+	nums_rows(Args, X-Y),
+	get_nums(Rows, Y-Z).
+
+nums_rows([], X-X).
+nums_rows([A|R], [A|X]-Y):- number(A), nums_rows(R, X-Y).
+nums_rows([A|R], X-Y)    :- \+ number(A), nums_rows(R, X-Y).
 
 form_col(Col, Table):- colNames(Table, Cs), member(Col, Cs).
 
@@ -84,15 +92,11 @@ base_value([X | Xs]):- form_value(X), form_value(Xs).
 dec(D, E):- D > 1, E is D-1.
 	
 %% evaluating forms:
-% eval_top(Form, Table, Res):- evaluate Form with Table to produce Res, type-checking first.
-% eval(Form, Table, Res):- evaluate Form with Table to produce Res.
-
-eval_top(Form, Table, Res):- once(form(Form, Table)), eval(Form, Table, Res).
 
 % Base case -- normalized indices, values.
 eval(indices(L), _Table, indices(L)).
 eval(val(X),     _Table, val(X)).
-eval(X,          _Table, val(X)):- base_value(X).
+eval(X,          _Table, val(X)):- X \== all, base_value(X).
 
 % 
 eval(all, Table, indices(Res)):- all_rows(Table, Res).
@@ -236,4 +240,4 @@ valop_list(Op, [L|Ls], [R|Rs], [X|Xs]):-
 perform_op(plus,   L, R, X):- number(L), number(R), X is L+R.
 perform_op(minus,  L, R, X):- number(L), number(R), X is L-R.
 perform_op(mult,   L, R, X):- number(L), number(R),  X is L*R.
-perform_op(divide, L, R, X):- number(L), number(R),  X is L/R.
+perform_op(divide, L, R, X):- number(L), number(R),  R \==0, X is L/R.
