@@ -1,4 +1,10 @@
-table_1(table([year, city, country, nations],
+:- ensure_loaded(eval).
+
+table_1(Table):-
+	table_1_data(OT),
+	processed_table(OT, Table).
+
+table_1_data(itable([year, city, country, nations],
 	    [row(1896, athens, greece, 14),
 	     row(1900, paris, france, 24),
 	     row(1904, 'st louis', usa, 12),
@@ -40,11 +46,11 @@ test("Events in Athens before 1990"):- table_1(Table),
 	eval(lt(year, 1990, eq(city, athens, all)), Table, indices([1])).
 test("How many events were in Athens, Greece?"):-
 	table_1(Table),
-	eval_top(card(eq(city, athens, all)), Table, val(2)).
+	eval(card(eq(city, athens, all)), Table, val(2)).
 
 test("Events in the same country as Athens"):-
 	table_1(Table),
-	eval_top(eq(country, proj(country, first(eq(city,athens, all))), all), 
+	eval(eq(country, proj(country, first(eq(city,athens, all))), all), 
 		 Table, indices([1,26])).
 
 test("Greece held its last Summer Olympics in which year?"):-
@@ -53,16 +59,23 @@ test("Greece held its last Summer Olympics in which year?"):-
 
 test("In which city’s the first time with at least 20 nations?"):-
 	table_1(Table),
-	eval_top(proj(city, min(year, ge(nations, 20, all))), Table, val([paris])).
+	eval(proj(city, min(year, ge(nations, 20, all))), Table, val([paris])).
 
 test("Which years have the most participating countries?"):-
 	table_1(Table),
-	eval_top(proj(year, max(nations, all)), Table, val([2008,2012])).
+	eval(proj(year, max(nations, all)), Table, val([2008,2012])).
 
 
 test("How many more participants were there in 1900 than in the first year?"):-
 	table_1(Table),
-	eval_top(proj(nations, eq(year, 1900, all))-proj(nations, min(year, all)), Table, val([10])).
+	eval(proj(nations, eq(year, 1900, all))-proj(nations, min(year, all)), Table, val([10])).
 
 :- end_tests(eval).
-	    
+
+:- begin_tests(form).
+test("Form1"):-
+	table_1(Table),
+	setof(Form, form(Form, 1, Table), Forms),
+	Forms=[all].
+	
+:- end_tests(form).
