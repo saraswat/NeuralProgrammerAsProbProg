@@ -12,6 +12,9 @@
 :- use_module(library(lists)).
 
 % Top-level entry points:
+go :- time((table_1(T), gen_solutions(S, 4, T, N))),
+	print(solutions(S)),
+	print(time(N)).
 gen_solutions(S, Depth, T, N):-
 	setof(sol(Form, X), (form_values(Form, Depth, T), eval(Form, T, val(X))), S), length(S, N).
 
