@@ -7,19 +7,33 @@
   can be used with them. (There is no particular reason to keep them sorted, seems this
   will be of use later.)
   
-
-
+*/
+% /*Comment for SWIPL
+/* for XSB
+    :- auto_table.
+ */
+/* For XSB
 :- table form_rows/3 as intern.
 :- table form_values/3 as intern.
 :- table form_value/3 as intern.
-*/
+  */
+%/* For BP
+ :- table form_values/3, form_rows/3, form_value/3.  
+%*/
+
 
 % Top-level entry points:
-my_top(D, S, N) :-
+my_top_s(D, S, N) :-
 	time((table_1(T), gen_solutions(S, D, T), length(S, N))).
 
 gen_solutions(S, Depth, T):-
 	setof(X-Form, (form_values(Form, Depth, T), eval(Form, T, val(X))), S).
+
+my_top_p(D, S, N) :-
+	time((table_1(T), gen_programs(S, D, T), length(S, N))).
+
+gen_programs(S, Depth, T):-
+	bagof(Form, (form_values(Form, Depth, T)), S).
 
 
 /* 
@@ -305,7 +319,11 @@ perform_op(minus,  L, R, X):- number(L), number(R), X is L-R.
 perform_op(mult,   L, R, X):- number(L), number(R),  X is L*R.
 perform_op(divide, L, R, X):- number(L), number(R),  R \==0, X is L/R.
 
-% utilities.
+				% utilities.
+member(X, Y, [X|_], [Y|_]).
+member(X, Y, [_|Xs], [_|Ys]):- member(X, Y, Xs, Ys).
+
+/* Comment for bp.
 nth1(I, TRows, Row):- nth1(I, 1, TRows, Row).
 nth1(I, I, [Row|_], Row).
 nth1(I, J, [_|Rows], Row):- J < I, J1 is J + 1, nth1(I, J1, Rows, Row).
@@ -316,8 +334,6 @@ append([A|R], S, [A|T]):- append(R, S, T).
 last(L, S):- append(_, [S], L).
 
 member(X, S):- append(_, [X|_], S).
-member(X, Y, [X|_], [Y|_]).
-member(X, Y, [_|Xs], [_|Ys]):- member(X, Y, Xs, Ys).
 	
 member_chk(X, S):- once(member(X,S)).
 
@@ -326,8 +342,8 @@ intersection([H|T], L2, Out) :-
 	(member_chk(H, L2) -> Out=[H|L3]; Out=L3),
 	intersection(T, L2, L3).
 
-/* Comment for SWIPL
+%/* Comment for SWIPL
 length(L, X):- length(L, 0, X).
 length([], A, A).
 length([_|X], A, B):- A1 is A+1, length(X, A1, B).
-*/
+%*/
