@@ -7,46 +7,79 @@
   can be used with them. (There is no particular reason to keep them sorted, seems this
   will be of use later.)
   
+
+
+:- table form_rows/3 as intern.
+:- table form_values/3 as intern.
+:- table form_value/3 as intern.
 */
 
-:- use_module(library(lists)).
-
 % Top-level entry points:
-go :- time((table_1(T), gen_solutions(S, 4, T, N))),
-	print(solutions(S)),
-	print(time(N)).
-gen_solutions(S, Depth, T, N):-
-	setof(sol(Form, X), (form_values(Form, Depth, T), eval(Form, T, val(X))), S), length(S, N).
+my_top(D, S, N) :-
+	time((table_1(T), gen_solutions(S, D, T), length(S, N))).
 
-%% Type checking formulas
-% formula(F, T) holds if F is a legal formula, given table T
+gen_solutions(S, Depth, T):-
+	setof(X-Form, (form_values(Form, Depth, T), eval(Form, T, val(X))), S).
+
+
+/* 
+   Type checking formulas
+   formula(F, T) :- F is a legal formula, given table T
+*/
 form(Form, Table):- form(Form, _Depth, Table).
+form_values(Form, Table):- form_values(Form, _Depth, Table).
 
-% form(Form, Depth, T):-
-%  Form is a logical form of depth at most Depth, with colnames and constants
-% specified in Table T.
+/*
+ form(Form, Depth, T):-
+  Form is a logical form of depth at most Depth, with colnames and constants
+  specified in Table T.
+
+  Can be used generatively.
+ */
 
 form(Form, Depth, T):- form_values(Form, Depth, T).
 form(Form, Depth, T):- form_value(Form, Depth, T).
 form(Form, Depth, T):- form_rows(Form, Depth, T).
 
-processed_table(itable(ColNames, Data), table(ColNames, Data, Numbers, Dates)):-
+/*
+  Given input itable(ColNames, RowList), Types is the types of the columns,
+  inferred by examining the data in Data, Numbers is the set of all numbers
+  in Data, and Dates is the set of all dates in Data.
+*/
+processed_table(itable(ColNames, Data), table(ColNames, Types, Data, Numbers, Dates)):-
+	get_types(Data, Types), 
 	get_dates(Data, Dates),
 	get_nums(Data, Nums-[]),
-	list_to_set(Nums, Numbers).
+	sort(Nums, Numbers).
 
-% eval_top(Form, Table, Res):- evaluate Form with Table to produce Res, type-checking first.
-% eval(Form, Table, Res):- evaluate Form with Table to produce Res.
-
+/*
+  eval_top(Form, Table, Res):- evaluate Form with Table to produce Res, type-checking first.
+  eval(Form, Table, Res):- evaluate Form with Table to produce Res.
+*/
 eval_top(Form, Table, Res):- once(form(Form, Table)), eval(Form, Table, Res).
 
 
-% Table is a processed table, of the form table(ColNames, RowList, Numbers, Dates).
+% Section Table. Table is of the form table(ColNames, ColTypes, RowList, Numbers, Dates).
 
-colNames(table(X, _, _, _), X).
-rowList(table(_, X, _, _), X).
-numbers(table(_, _, X, _), X).
-dates(table(_, _, _, X), X).
+colNames(table(X, _, _, _, _), X).
+colTypes(table(_, X, _, _, _), X).
+rowList(table(_, _, X, _, _), X).
+numbers(table(_, _, _, X, _), X).
+dates(table(_, _, _, _, X), X).
+
+get_types([Row | Rows], Type):- get_type(Row, T), get_types(Rows, T, Type).
+
+get_types([], T, T).
+get_types([Row | Rows], T, Types):- get_type(Row, T1), merge_types(T1, T, T2), get_types(Rows, T2, Types).
+
+get_type(Row, Types):- Row=..[row|Args], get_type_1(Args, Types).
+get_type_1([], []).
+get_type_1([A|As], [T|Ts]):- type_d(A,T), get_type_1(As, Ts).
+
+merge_types([T|Tr], [S|Sr], [U|Ur]):- merge_type(T, S, U), merge_types(Tr, Sr, Ur).
+merge_types([],[],[]).
+
+merge_type(X, Y, Z):- X == Y -> Z=X; Z=unk.
 
 get_dates(_L, []). % TODO: extract dates from tables.
 get_nums([], X-X).
@@ -56,44 +89,71 @@ get_nums([Row | Rows], X-Z):-
 	get_nums(Rows, Y-Z).
 
 nums_rows([], X-X).
-nums_rows([A|R], [A|X]-Y):- number(A), nums_rows(R, X-Y).
-nums_rows([A|R], X-Y)    :- \+ number(A), nums_rows(R, X-Y).
+nums_rows([A|R], T-Y):- (number(A) -> T=[A|X];T=X), nums_rows(R, X-Y).
 
-form_col(Col, Table):- colNames(Table, Cs), member(Col, Cs).
+% Section logical forms
+form_col(Col, Type, Table):- colNames(Table, Cs), colTypes(Table, Ct), member(Col, Type, Cs, Ct).
 
-form_rows(all,         D,  _T):- D >= 1.
-form_rows(either(R,S), D, T)    :- dec(D, E), form_rows(R, E, T),  form_rows(S, E,  T).
-form_rows(both(R, S),  D, T)    :- dec(D, E), form_rows(R, E, T),  form_rows(S, E, T).
-form_rows(ge(Col, Val, Rows), D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T), form_value(Val, E, T).
-form_rows(gt(Col, Val, Rows), D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T), form_value(Val, E, T).
-form_rows(le(Col, Val, Rows), D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T), form_value(Val, E, T).
-form_rows(lt(Col, Val, Rows), D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T), form_value(Val, E, T).
-form_rows(eq(Col, Val, Rows), D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T), form_value(Val, E, T).
-form_rows(max(Col, Rows),     D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T).
-form_rows(min(Col, Rows),     D, T):- dec(D, E), form_col(Col, T), form_rows(Rows, E, T).
-form_rows(prev(Rows),         D, T):- dec(D, E),                   form_rows(Rows, E, T).
-form_rows(next(Rows),         D, T):- dec(D, E),                   form_rows(Rows, E, T).
-form_rows(first(Rows),        D, T):- dec(D, E),                   form_rows(Rows, E, T).
-form_rows(last(Rows),         D, T):- dec(D, E),                   form_rows(Rows, E, T).
+form_rows(all, D,  _T):- D >= 1.
+form_rows(X,   D,   T):- dec(D, E), form_rows_1(X, E, T).
+%form_rows(both(R, S),  D, T)    :- dec(D, E), form_rows(R, E, T),  form_rows(S, E, T).
+form_rows_1(either(R,S),      E, T):- form_rows(R, E, T),  form_rows(S, E,  T).
+form_rows_1(ge(Col, V, Rows), E, T):- form_rows(Rows, E, T), form_value(V, E, T), are_nums(Col, V, T).
+form_rows_1(gt(Col, V, Rows), E, T):- form_rows(Rows, E, T), form_value(V, E, T), are_nums(Col, V, T).
+form_rows_1(le(Col, V, Rows), E, T):- form_rows(Rows, E, T), form_value(V, E, T), are_nums(Col, V, T).
+form_rows_1(lt(Col, V, Rows), E, T):- form_rows(Rows, E, T), form_value(V, E, T), are_nums(Col, V, T).
+form_rows_1(eq(Col, V, Rows), E, T):- form_rows(Rows, E, T), form_value(V, E, T), are_same(Col, V, T).
+form_rows_1(max(Col, Rows),   E, T):- is_num(Col, T),      form_rows(Rows, E, T).
+form_rows_1(min(Col, Rows),   E, T):- is_num(Col, T),     form_rows(Rows, E, T).
+form_rows_1(prev(Rows),       E, T):-                      form_rows(Rows, E, T).
+form_rows_1(next(Rows),       E, T):-                      form_rows(Rows, E, T).
+form_rows_1(first(Rows),      E, T):-                      form_rows(Rows, E, T).
+form_rows_1(last(Rows),       E, T):-                      form_rows(Rows, E, T).
 
-form_values(proj(Col, Rows),  D, T):- dec(D, E), form_col(Col, T),     form_rows(Rows, E, T).
-form_values(L+R,              D, T):- dec(D, E), form_values(L, E, T), form_values(R, E, T).
-form_values(L-R,              D, T):- dec(D, E), form_values(L, E, T), form_values(R, E, T).
-form_values(L/R,              D, T):- dec(D, E), form_values(L, E, T), form_values(R, E, T).
-form_values(L*R,              D, T):- dec(D, E), form_values(L, E, T), form_values(R, E, T).
-form_values(card(Rows),       D, T):- dec(D, E),                       form_rows(Rows, E, T).
+form_values(X, D, T) :- dec(D, E), form_values1(X, E, T).
+form_values1(proj(Col, Rows),  E, T):- form_col(Col, _, T),  form_rows(Rows,E, T).
+form_values1(L+R,              E, T):- form_values(L, E, T), form_values(R, E, T), are_nums_v(L, R, T).
+form_values1(L-R,              E, T):- form_values(L, E, T), form_values(R, E, T), are_nums_v(L, R, T).
+form_values1(L/R,              E, T):- form_values(L, E, T), form_values(R, E, T), is_num_v(L, T), is_num_v(R, T).
+form_values1(L*R,              E, T):- form_values(L, E, T), form_values(R, E, T), are_nums_v(L, R, T).
+form_values1(card(Rows),       E, T):-                       form_rows(Rows, E, T).
 
 form_value(X, ignore, _T)       :- base_value(X).
 form_value(X, ignore, T)        :- form_values(X, T). % maybe at runtime we will get a singleton value.
-
-form_value(X, N, Table) :- N >= 1, numbers(Table, Numbers), member(X, Numbers).
+form_value(X, D, T) :- D >= 1, numbers(T, Numbers), member(X, Numbers).
 
 base_value(X)       :- atomic(X).
 base_value(Date)    :- (functor(Date, date, N), (N==9; N==3)); functor(Date, time, 3).
-base_value([X | Xs]):- form_value(X), form_value(Xs).
+base_value([X | Xs]):- base_value(X), base_value(Xs).
 
 dec(D, E):- D > 1, E is D-1.
-	
+
+%% type-checking
+num_type(int).
+num_type(float).
+are_same(Col, Val, Table):- are_same(Col, Val, Table, _Type).
+are_nums(Col, Val, Table):- are_same(Col, Val, Table, Type), num_type(Type).
+
+is_num(Col,        Table):- form_col(Col, Type, Table), num_type(Type).
+is_num_v(Col,      Table):- is_num_v(Col, Table, _Type).
+are_nums_v(L, R,   Table):- is_num_v(L, Table, Type), is_num_v(R, Table, Type).
+
+are_same(Col, Val, Table, Type):- form_col(Col, Type, Table), type_v(Val, Type).
+is_num_v(Exp, Table, Type):- type_v(Exp, Table, Type), num_type(Type).
+
+% type of value. it can be a constant or a +, -, *, /, card or proj.
+type_v(L+_, Table, Type):- type_v(L, Table, Type).
+type_v(L-_, Table, Type):- type_v(L, Table, Type).
+type_v(L*_, Table, Type):- type_v(L, Table, Type).
+type_v(_/_, _Table, float).
+type_v(card(_), _Table, int).
+type_v(proj(Col, _), Table, Type):- form_col(Col, Type, Table).
+type_v(Exp, Type):- type_d(Exp, Type).
+
+% type of datum
+type_d(A, int):- integer(A).
+type_d(A, float):- float(A).
+type_d(A, atom):- atom(A).
 %% evaluating forms:
 
 % Base case -- normalized indices, values.
@@ -110,10 +170,10 @@ eval(either(R,S), Table, indices(Res)):-
 	sort(Ind, Res).
 
 % probably both is not needed. One can do a CPS embedding of R in S.
-eval(both(R,S), Table, indices(Res)):- 
-	eval(R, Table, indices(IndR)),
-	eval(S, Table, indices(IndS)),
-	intersection(IndR, IndS, Res).
+%eval(both(R,S), Table, indices(Res)):- 
+%	eval(R, Table, indices(IndR)),
+%	eval(S, Table, indices(IndS)),
+%	intersection(IndR, IndS, Res).
 
 eval(card(Rows),  Table, val(R))        :- eval(Rows, Table, indices(Inds)), length(Inds, R).
 eval(first(Rows), Table, indices([Row])):- eval(Rows, Table, indices([Row|_])).
@@ -161,7 +221,7 @@ e_comp(Op, ColName, CellForm, Rows, Table, Res):-
 single_value(val([X]), X).
 single_value(val(X), X):- atomic(X).
 
-row(I, table(_ColNames, Rows), Row):- arg(I, Rows, Row).
+%row(I, table(_ColNames, Rows), Row):- arg(I, Rows, Row).
 col(ColName, Table, J)  :- colNames(Table, ColNames),    col(ColName, 1, ColNames, J).
 col(ColName, I, [ColName | _Rest], I).
 col(ColName, I, [C | Rest], J)       :- ColName \== C, I1 is I+1, col(ColName, I1, Rest, J).
@@ -244,3 +304,30 @@ perform_op(plus,   L, R, X):- number(L), number(R), X is L+R.
 perform_op(minus,  L, R, X):- number(L), number(R), X is L-R.
 perform_op(mult,   L, R, X):- number(L), number(R),  X is L*R.
 perform_op(divide, L, R, X):- number(L), number(R),  R \==0, X is L/R.
+
+% utilities.
+nth1(I, TRows, Row):- nth1(I, 1, TRows, Row).
+nth1(I, I, [Row|_], Row).
+nth1(I, J, [_|Rows], Row):- J < I, J1 is J + 1, nth1(I, J1, Rows, Row).
+
+append([], X, X).
+append([A|R], S, [A|T]):- append(R, S, T).
+
+last(L, S):- append(_, [S], L).
+
+member(X, S):- append(_, [X|_], S).
+member(X, Y, [X|_], [Y|_]).
+member(X, Y, [_|Xs], [_|Ys]):- member(X, Y, Xs, Ys).
+	
+member_chk(X, S):- once(member(X,S)).
+
+intersection([], _, []).
+intersection([H|T], L2, Out) :-
+	(member_chk(H, L2) -> Out=[H|L3]; Out=L3),
+	intersection(T, L2, L3).
+
+/* Comment for SWIPL
+length(L, X):- length(L, 0, X).
+length([], A, A).
+length([_|X], A, B):- A1 is A+1, length(X, A1, B).
+*/
