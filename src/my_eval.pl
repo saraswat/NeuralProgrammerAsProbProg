@@ -317,7 +317,10 @@ valop_list(Op, [L|Ls], [R|Rs], [X|Xs]):-
 perform_op(plus,   L, R, X):- number(L), number(R), X is L+R.
 perform_op(minus,  L, R, X):- number(L), number(R), X is L-R.
 perform_op(mult,   L, R, X):- number(L), number(R),  X is L*R.
-perform_op(divide, L, R, X):- number(L), number(R),  R \==0, X is L/R.
+perform_op(divide, L, R, X):- number(L), number(R),  nonzero(R), X is L/R.
+
+nonzero(R):- integer(R), (R > 0; R < 0).
+nonzero(R):- float(R), (R > 0.0001; R < -0.0001).
 
 				% utilities.
 member(X, Y, [X|_], [Y|_]).
